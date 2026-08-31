@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Video Tutor — Privacy Policy</title>
+  <style>
+    :root { color-scheme: light; --ink: #1f2430; --muted: #5b6472; --accent: #4f46e5; --rule: #e5e7eb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--ink); line-height: 1.7; background: #fafafa; }
+    main { max-width: 760px; margin: 0 auto; padding: 48px 24px 96px; }
+    h1 { font-size: 1.9rem; margin: 0 0 .3rem; }
+    .sub { color: var(--muted); margin: 0 0 2rem; }
+    h2 { font-size: 1.25rem; margin-top: 2.2rem; border-bottom: 1px solid var(--rule); padding-bottom: .4rem; }
+    .lang { color: var(--accent); font-weight: 600; letter-spacing: .02em; text-transform: uppercase; font-size: .85rem; margin-top: 2.5rem; }
+    a { color: var(--accent); }
+    code { background: #eef0f5; padding: .1em .35em; border-radius: 4px; font-size: .92em; }
+    ul { padding-left: 1.3rem; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>AI Video Tutor — Privacy Policy</h1>
+  <p class="sub">Effective date: 2026-08-31 · 生效日期：2026-08-31</p>
+
+  <p>AI Video Tutor is a browser extension that acts as a one-on-one learning assistant beside the video you are watching. This policy explains what data the extension handles and how.</p>
+  <p>AI Video Tutor 是一款在浏览器里、陪伴你观看视频的一对一 AI 学习助教（浏览器扩展）。本政策说明该扩展如何处理数据。</p>
+
+  <div class="lang">English</div>
+
+  <h2>1. No backend, no account, no telemetry</h2>
+  <p>AI Video Tutor has <strong>no server of its own</strong>. There is no account system, no login, no analytics, no telemetry, no crash reporting, no advertising SDK, no third-party trackers, and no cookies. We (the developer) collect nothing and cannot see your usage.</p>
+
+  <h2>2. What data is stored — and where</h2>
+  <ul>
+    <li><strong>Your API keys</strong> are stored only in the browser's <code>chrome.storage.local</code> (on your device). They are never written to the page DOM, the console, or any server.</li>
+    <li><strong>Subtitles, knowledge chunks, keyframes, conversation history, and learning notes</strong> are stored only in the browser's local IndexedDB (<code>AI_VIDEO_TUTOR_DB</code>) on your device.</li>
+    <li>No full videos and no high-resolution screenshots are stored long-term.</li>
+  </ul>
+  <p>All of the above stays on your device and is removed when you uninstall the extension or clear browser data.</p>
+
+  <h2>3. Bring Your Own Key (BYOK) — third-party processing</h2>
+  <p>The extension is <strong>BYOK</strong>: you provide your own API key for the AI model you choose. When you ask a question, the content involved (video subtitles, the current frame, and your question) is sent — <strong>by your explicit action</strong> — directly from your browser to the AI provider you configured. That provider is a third party and processes the data under its own privacy policy. Supported providers may include:</p>
+  <ul>
+    <li>Google Gemini — <code>generativelanguage.googleapis.com</code></li>
+    <li>OpenAI — <code>api.openai.com</code></li>
+    <li>DeepSeek — <code>api.deepseek.com</code></li>
+    <li>Alibaba Cloud DashScope (Qwen) — <code>dashscope.aliyuncs.com</code></li>
+    <li>Any OpenAI-compatible endpoint or custom base URL you enter yourself</li>
+  </ul>
+  <p>We do not proxy, store, or control these requests — it is a direct connection between your browser and the provider you own the key for.</p>
+
+  <h2>4. Other network requests</h2>
+  <p>The only other network request is a lookup of the public model catalog at <code>https://models.dev/catalog.json</code> (used to populate the list of available models). This request carries no personal data.</p>
+
+  <h2>5. Permissions — why they are needed</h2>
+  <ul>
+    <li><code>storage</code> — to save your settings and API keys locally.</li>
+    <li><code>activeTab</code> / <code>tabs</code> — to read the current page and capture the video frame you ask about.</li>
+    <li><code>scripting</code> — to inject a content script that detects the <code>&lt;video&gt;</code> element.</li>
+    <li><code>host_permissions: &lt;all_urls&gt;</code> — so the extension can work on any site that has a video you want to learn from.</li>
+  </ul>
+
+  <h2>6. Your control and data deletion</h2>
+  <ul>
+    <li>You can delete all local data at any time by clearing the extension's data in browser settings, or by uninstalling the extension.</li>
+    <li>You are never required to enter an API key; a Mock mode lets you try the UI without any key.</li>
+  </ul>
+
+  <h2>7. Children</h2>
+  <p>The extension is not directed to children under 13 and does not knowingly collect personal information from them.</p>
+
+  <h2>8. Contact</h2>
+  <p>For privacy questions, open an issue at <a href="https://github.com/luvchippy/AI-Video-Tutor/issues">https://github.com/luvchippy/AI-Video-Tutor/issues</a>.</p>
+
+  <div class="lang">中文</div>
+
+  <h2>1. 无后端、无账号、无遥测</h2>
+  <p>AI Video Tutor <strong>没有自己的服务器</strong>：没有账号系统、没有登录、没有分析统计、没有遥测、没有崩溃上报、没有广告 SDK、没有第三方追踪器、没有 Cookie。开发者不会收集、也无法看到你的使用情况。</p>
+
+  <h2>2. 存储了什么数据、存在哪里</h2>
+  <ul>
+    <li><strong>你的 API Key</strong> 只保存在浏览器的 <code>chrome.storage.local</code>（本机）。它不会被写入页面 DOM、控制台或任何服务器。</li>
+    <li><strong>字幕、知识片段、关键帧、对话记录、学习笔记</strong> 只保存在浏览器本地的 IndexedDB（<code>AI_VIDEO_TUTOR_DB</code>）。</li>
+    <li>不长期保存完整视频、不长期保存高清截图。</li>
+  </ul>
+  <p>以上数据都留在你的设备上，卸载扩展或清除浏览器数据即被删除。</p>
+
+  <h2>3. 自带 Key（BYOK）——第三方处理</h2>
+  <p>本扩展采用 <strong>BYOK</strong>：你为自己选择的 AI 模型提供 API Key。当你提问时，相关的内容（视频字幕、当前画面、你的问题）会<strong>因你的主动操作</strong>、由你的浏览器直接发送给你所配置的 AI 服务商。该服务商是第三方，按其自身的隐私政策处理数据。支持的提供商可能包括：</p>
+  <ul>
+    <li>Google Gemini —— <code>generativelanguage.googleapis.com</code></li>
+    <li>OpenAI —— <code>api.openai.com</code></li>
+    <li>DeepSeek —— <code>api.deepseek.com</code></li>
+    <li>阿里云百炼 DashScope（通义千问）—— <code>dashscope.aliyuncs.com</code></li>
+    <li>你自己填写的任意 OpenAI-compatible 端点或自定义 Base URL</li>
+  </ul>
+  <p>我们不会中转、存储或控制这些请求——这是你的浏览器与你自己持有 Key 的服务商之间的直连。</p>
+
+  <h2>4. 其他网络请求</h2>
+  <p>唯一的其他网络请求，是拉取公开模型目录 <code>https://models.dev/catalog.json</code>（用于填充可选模型列表）。该请求不携带任何个人数据。</p>
+
+  <h2>5. 权限 —— 为什么需要</h2>
+  <ul>
+    <li><code>storage</code> —— 在本地保存你的设置与 API Key。</li>
+    <li><code>activeTab</code> / <code>tabs</code> —— 读取当前页面、截取你询问的视频画面。</li>
+    <li><code>scripting</code> —— 注入 content script 以检测 <code>&lt;video&gt;</code> 元素。</li>
+    <li><code>host_permissions: &lt;all_urls&gt;</code> —— 让你想学习的任意带视频网站都能使用本扩展。</li>
+  </ul>
+
+  <h2>6. 你的控制权与数据删除</h2>
+  <ul>
+    <li>你可以随时在浏览器设置中清除扩展数据，或卸载扩展，即可删除全部本地数据。</li>
+    <li>你永远不必输入 API Key；Mock 模式可让你在无 Key 的情况下体验界面。</li>
+  </ul>
+
+  <h2>7. 未成年人</h2>
+  <p>本扩展不面向 13 岁以下儿童，也不会故意收集儿童的个人信息。</p>
+
+  <h2>8. 联系方式</h2>
+  <p>如有隐私相关问题，请在 <a href="https://github.com/luvchippy/AI-Video-Tutor/issues">https://github.com/luvchippy/AI-Video-Tutor/issues</a> 提交 issue。</p>
+</main>
+</body>
+</html>

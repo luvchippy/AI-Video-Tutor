@@ -212,24 +212,15 @@ if (model.capabilities.nativeWebSearch) enableFactCheck();
 
 ## 13. 打包发布到 Edge / Chrome 商店
 
-### 前置：扩展图标
+### 扩展图标（已就绪）
 
-商店上架前需要准备扩展图标（16 / 48 / 128 px 的 PNG，Chrome 至少需要 128×128）。项目当前未内置图标：
+图标已内置，并在 `wxt.config.ts` 的 `manifest.icons` 中声明（16 / 32 / 48 / 128 px）：
 
-1. 将图标放入 `public/icons/`（WXT 会把 `public/` 原样拷贝进产物根目录）
-2. 在 `wxt.config.ts` 的 `manifest` 中声明：
+- `public/icons/icon-16.png` / `icon-32.png` / `icon-48.png` / `icon-128.png` —— 商店与工具栏使用
+- `public/icons/icon.svg` —— 可编辑的矢量源文件
+- `scripts/generate-icons.ps1` —— 重新生成 PNG：`powershell -NoProfile -ExecutionPolicy Bypass -File scripts/generate-icons.ps1`
 
-```ts
-manifest: {
-  name: 'AI Video Tutor',
-  icons: {
-    16: '/icons/icon-16.png',
-    48: '/icons/icon-48.png',
-    128: '/icons/icon-128.png',
-  },
-  // ...
-}
-```
+如需更换图标，编辑 `icon.svg`（或脚本中的几何参数）后重新运行生成脚本即可。
 
 ### Chrome Web Store
 
@@ -243,7 +234,7 @@ npx wxt zip -b chrome      # 生成 .output/chrome-mv3-*.zip
 2. 打开 [Chrome Web Store 开发者后台](https://chrome.google.com/webstore/devconsole) → 新建项目
 3. 上传刚生成的 `.zip`
 4. 填写商店信息：说明、截图（1280×800 或 640×400）、类别
-5. 填写隐私政策：本项目 **BYOK、零后端、无遥测**，API Key 只存 `chrome.storage.local`，不会离开浏览器 —— 隐私政策可按此如实书写
+5. 填写**隐私政策 URL**：填入第 14 章的在线隐私政策地址（GitHub Pages 托管，中英双语）
 6. 提交审核
 
 ### Microsoft Edge Add-ons
@@ -264,6 +255,26 @@ npx wxt zip -b edge        # 生成 .output/edge-mv3-*.zip
 - **权限最小化**：当前 manifest 声明了 `storage / tabs / activeTab / scripting` 与 `<all_urls>` 的 host 权限，商店审核会要求逐项说明用途，请准备好理由：截图取帧用 `activeTab`/`tabs`，`scripting` 用于注入 content script，`<all_urls>` 用于匹配任意站点的 `<video>`。
 - Chrome 对 `<all_urls>` 权限审核更严；若被驳回，可考虑改为更具体的 hosts 或改用运行时 `activeTab` 授权。
 - 两个商店对 MV3 `host_permissions` 的展示与授权策略略有差异，Edge 通常更宽松。
+
+---
+
+## 14. 隐私政策链接（商店上架必需）
+
+Chrome 与 Edge 商店上架时都要求提供一个**在线可访问的隐私政策 URL**。本项目已内置中英双语隐私政策页面：`docs/index.html`。
+
+### 用 GitHub Pages 托管（免费）
+
+1. 打开仓库 → **Settings → Pages**
+2. 在 **Build and deployment** 下，Source 选 **Deploy from a branch**
+3. Branch 选 `master`，目录选 **`/docs`**，点 Save
+
+约 1 分钟后即可访问，商店上架时填入此 URL：
+
+```
+https://luvchippy.github.io/AI-Video-Tutor/
+```
+
+> 前提：仓库需为 **public**（GitHub 免费版对私有仓库不提供 Pages）。若仓库为私有，可改用 Netlify / Vercel / Cloudflare Pages 托管 `docs/index.html`，或升级 GitHub 计划。
 
 ---
 
