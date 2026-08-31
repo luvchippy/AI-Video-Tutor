@@ -258,23 +258,13 @@ npx wxt zip -b edge        # 生成 .output/edge-mv3-*.zip
 
 ---
 
-## 14. 隐私政策链接（商店上架必需）
+## 14. 隐私政策
 
-Chrome 与 Edge 商店上架时都要求提供一个**在线可访问的隐私政策 URL**。本项目已内置中英双语隐私政策页面：`docs/index.html`。
-
-### 用 GitHub Pages 托管（免费）
-
-1. 打开仓库 → **Settings → Pages**
-2. 在 **Build and deployment** 下，Source 选 **Deploy from a branch**
-3. Branch 选 `master`，目录选 **`/docs`**，点 Save
-
-约 1 分钟后即可访问，商店上架时填入此 URL：
+项目已内置中英双语隐私政策页面（`docs/index.html`），并通过 GitHub Pages 托管在线。商店上架时在「隐私政策 URL」填入：
 
 ```
 https://luvchippy.github.io/AI-Video-Tutor/
 ```
-
-> 前提：仓库需为 **public**（GitHub 免费版对私有仓库不提供 Pages）。若仓库为私有，可改用 Netlify / Vercel / Cloudflare Pages 托管 `docs/index.html`，或升级 GitHub 计划。
 
 ---
 
