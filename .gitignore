@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# WXT build output + generated types
+.output/
+.wxt/
+stats.html
+
+# build artifacts (zip)
+*.zip
+
+# local test media
+*.mp4
+*.webm
+*.mov
+
+# personal screenshots (root-level only; icons under public/icons/ are still tracked)
+/*.png
+
+# OpenCode / coding-agent dev notes (personal, not project docs)
+OpenCode*.md
+
+# editor
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# internal tooling
+.codegraph/
+.omo/

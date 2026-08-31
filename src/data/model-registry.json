@@ -1,0 +1,230 @@
+[
+  {
+    "provider": "gemini",
+    "id": "gemini-2.5-flash",
+    "displayName": "Gemini 2.5 Flash",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": true,
+      "videoInput": true,
+      "videoFileUpload": true,
+      "directVideoUrl": true,
+      "youtubeUrl": true,
+      "nativeWebSearch": true,
+      "functionCalling": true,
+      "structuredOutput": true,
+      "streaming": true,
+      "contextWindow": 1048576
+    },
+    "roles": { "tutor": true, "vision": true, "video": true, "search": true },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "gemini",
+    "id": "gemini-2.5-pro",
+    "displayName": "Gemini 2.5 Pro",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": true,
+      "videoInput": true,
+      "videoFileUpload": true,
+      "directVideoUrl": true,
+      "youtubeUrl": true,
+      "nativeWebSearch": true,
+      "functionCalling": true,
+      "structuredOutput": true,
+      "streaming": true,
+      "contextWindow": 1048576
+    },
+    "roles": { "tutor": true, "vision": true, "video": true, "search": true },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "deepseek",
+    "id": "deepseek-v4-flash",
+    "displayName": "DeepSeek V4 Flash",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": false,
+      "audioInput": false,
+      "videoInput": false,
+      "videoFileUpload": false,
+      "directVideoUrl": false,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": true,
+      "structuredOutput": false,
+      "streaming": true,
+      "contextWindow": 65536
+    },
+    "roles": { "tutor": true, "vision": false, "video": false, "search": false },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "deepseek",
+    "id": "deepseek-v4-pro",
+    "displayName": "DeepSeek V4 Pro",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": false,
+      "audioInput": false,
+      "videoInput": false,
+      "videoFileUpload": false,
+      "directVideoUrl": false,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": true,
+      "structuredOutput": false,
+      "streaming": true,
+      "contextWindow": 65536
+    },
+    "roles": { "tutor": true, "vision": false, "video": false, "search": false },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "openai",
+    "id": "gpt-4o-mini",
+    "displayName": "GPT-4o mini",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": false,
+      "videoInput": false,
+      "videoFileUpload": false,
+      "directVideoUrl": false,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": true,
+      "structuredOutput": true,
+      "streaming": true,
+      "contextWindow": 128000
+    },
+    "roles": { "tutor": true, "vision": true, "video": false, "search": false },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "openai",
+    "id": "gpt-4o",
+    "displayName": "GPT-4o",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": true,
+      "videoInput": false,
+      "videoFileUpload": false,
+      "directVideoUrl": false,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": true,
+      "structuredOutput": true,
+      "streaming": true,
+      "contextWindow": 128000
+    },
+    "roles": { "tutor": true, "vision": true, "video": false, "search": false },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "qwen",
+    "id": "qwen-plus",
+    "displayName": "Qwen Plus",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": false,
+      "audioInput": false,
+      "videoInput": false,
+      "videoFileUpload": false,
+      "directVideoUrl": false,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": true,
+      "structuredOutput": false,
+      "streaming": true,
+      "contextWindow": 131072
+    },
+    "roles": { "tutor": true, "vision": false, "video": false, "search": false },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "qwen",
+    "id": "qwen-vl-max",
+    "displayName": "Qwen VL Max",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": false,
+      "videoInput": true,
+      "videoFileUpload": true,
+      "directVideoUrl": true,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": false,
+      "structuredOutput": false,
+      "streaming": true
+    },
+    "roles": { "tutor": true, "vision": true, "video": true, "search": false },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "qwen",
+    "id": "qwen-omni-turbo",
+    "displayName": "Qwen Omni Turbo",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": true,
+      "videoInput": true,
+      "videoFileUpload": true,
+      "directVideoUrl": true,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": false,
+      "structuredOutput": false,
+      "streaming": true
+    },
+    "roles": { "tutor": true, "vision": true, "video": true, "search": false },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "mock",
+    "id": "mock-tutor",
+    "displayName": "Mock (Demo)",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": false,
+      "videoInput": false,
+      "videoFileUpload": false,
+      "directVideoUrl": false,
+      "youtubeUrl": false,
+      "nativeWebSearch": true,
+      "functionCalling": false,
+      "structuredOutput": false,
+      "streaming": true
+    },
+    "roles": { "tutor": true, "vision": true, "video": false, "search": true },
+    "lastVerified": "2026-08-13"
+  },
+  {
+    "provider": "dots",
+    "id": "dots3-note-prev",
+    "displayName": "Dots3 Note Prev",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": true,
+      "videoInput": true,
+      "videoFileUpload": false,
+      "directVideoUrl": true,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": true,
+      "structuredOutput": false,
+      "streaming": true,
+      "contextWindow": 128000
+    },
+    "roles": { "tutor": true, "vision": true, "video": true, "search": false },
+    "lastVerified": "2026-08-13"
+  }
+]

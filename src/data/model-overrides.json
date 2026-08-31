@@ -1,0 +1,23 @@
+[
+  {
+    "provider": "dots",
+    "id": "dots3-note-prev",
+    "displayName": "Dots3 Note Prev",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": true,
+      "videoInput": true,
+      "videoFileUpload": false,
+      "directVideoUrl": true,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": true,
+      "structuredOutput": false,
+      "streaming": true,
+      "contextWindow": 524288
+    },
+    "roles": { "tutor": true, "vision": true, "video": true, "search": false },
+    "lastVerified": "2026-08-13"
+  }
+]
