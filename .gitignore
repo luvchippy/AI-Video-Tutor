@@ -20,6 +20,9 @@ stats.html
 # OpenCode / coding-agent dev notes (personal, not project docs)
 OpenCode*.md
 
+# store listing assets (generated marketing binaries; may contain user content)
+store/
+
 # editor
 .idea/
 .vscode/*
