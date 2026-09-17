@@ -20,8 +20,12 @@ stats.html
 # OpenCode / coding-agent dev notes (personal, not project docs)
 OpenCode*.md
 
-# store listing assets (generated marketing binaries; may contain user content)
-store/
+# store listing assets (generated marketing binaries; may contain user content).
+# Only the binaries are ignored — the written submission notes in this folder are
+# project docs and stay tracked. Note the directory itself must not be excluded,
+# because git cannot re-include a file whose parent directory is ignored.
+store/*.jpg
+store/*.png
 
 # editor
 .idea/
@@ -35,3 +39,5 @@ Thumbs.db
 # internal tooling
 .codegraph/
 .omo/
+.mimosa/
+.zcode/

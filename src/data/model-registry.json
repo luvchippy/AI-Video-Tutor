@@ -84,6 +84,25 @@
     "lastVerified": "2026-08-13"
   },
   {
+    "provider": "deepseek",
+    "id": "deepseek-v4.1-flash",
+    "displayName": "DeepSeek V4.1 Flash",
+    "capabilities": {
+      "textInput": true,
+      "imageInput": true,
+      "audioInput": false,
+      "videoInput": false,
+      "videoFileUpload": false,
+      "directVideoUrl": false,
+      "youtubeUrl": false,
+      "nativeWebSearch": false,
+      "functionCalling": true,
+      "structuredOutput": false,
+      "streaming": true
+    },
+    "roles": { "tutor": true, "vision": true, "video": false, "search": false }
+  },
+  {
     "provider": "openai",
     "id": "gpt-4o-mini",
     "displayName": "GPT-4o mini",

@@ -79,10 +79,9 @@ describe('resolveCapabilities', () => {
     expect(result.capabilities.nativeWebSearch).toBe(false);
   });
 
-  it('gemini protocol preserves audio/video/web-search capabilities', () => {
+  it('gemini protocol preserves image and web-search capabilities', () => {
     const result = resolveCapabilities('gemini', 'gemini-2.5-flash');
-    expect(result.capabilities.audioInput).toBe(true);
-    expect(result.capabilities.videoInput).toBe(true);
+    expect(result.capabilities.imageInput).toBe(true);
     expect(result.capabilities.nativeWebSearch).toBe(true);
   });
 
@@ -91,8 +90,6 @@ describe('resolveCapabilities', () => {
     expect(result.source).toBe('local-override');
     expect(result.capabilities.textInput).toBe(true);
     expect(result.capabilities.imageInput).toBe(true);
-    expect(result.capabilities.videoInput).toBe(true);
-    expect(result.capabilities.audioInput).toBe(true);
     expect(result.capabilities.functionCalling).toBe(true);
     expect(result.capabilities.nativeWebSearch).toBe(false);
     expect(result.capabilities.contextWindow).toBe(524288);
@@ -104,17 +101,39 @@ describe('resolveCapabilities', () => {
     expect(result.capabilities.textInput).toBe(true);
   });
 
-  it('openai-compatible protocol does NOT restrict dots model capabilities', () => {
-    // This verifies that openai-compatible and dots-openai are separate protocols
-    // and don't interfere with each other
+  it('openai-compatible and dots-openai stay independent protocols', () => {
+    // Both resolve the same model definition but must not leak into each other:
+    // dots keeps the override's own facts (context window), while
+    // openai-compatible applies its own web-search limit.
     const dotsResult = resolveCapabilities('dots-openai', 'dots3-note-prev');
     const openaiResult = resolveCapabilities('openai-compatible', 'dots3-note-prev');
-    // dots-openai should have full capabilities; openai-compatible should limit them
-    expect(dotsResult.capabilities.audioInput).toBe(true);
-    expect(dotsResult.capabilities.videoInput).toBe(true);
-    // openai-compatible limits audio/video to false (protocol can't transmit them)
-    expect(openaiResult.capabilities.audioInput).toBe(false);
-    expect(openaiResult.capabilities.videoInput).toBe(false);
+    expect(dotsResult.capabilities.imageInput).toBe(true);
+    expect(dotsResult.capabilities.contextWindow).toBe(524288);
+    expect(openaiResult.capabilities.imageInput).toBe(true);
+    expect(openaiResult.capabilities.nativeWebSearch).toBe(false);
+  });
+
+  it('never exposes video or audio input on any protocol', () => {
+    // The pipeline only ever sends text and single images (services/
+    // tutor-engine.ts `answer()`), so no protocol may advertise these until a
+    // code path actually sends the content. FULL claims everything is
+    // supported, which the gate must override.
+    const protocols = [
+      'gemini',
+      'openai-compatible',
+      'deepseek',
+      'qwen',
+      'dots-openai',
+      'mock',
+    ] as const;
+    for (const protocol of protocols) {
+      const result = resolveCapabilities(protocol, 'anything', FULL);
+      expect(result.capabilities.videoInput, protocol).toBe(false);
+      expect(result.capabilities.audioInput, protocol).toBe(false);
+      expect(result.capabilities.videoFileUpload, protocol).toBe(false);
+      expect(result.capabilities.directVideoUrl, protocol).toBe(false);
+      expect(result.capabilities.youtubeUrl, protocol).toBe(false);
+    }
   });
 
   it('mock protocol works', () => {

@@ -58,7 +58,6 @@ export function ChatHeader() {
         <StatusChip ok={hasVideo} label="已连接视频" />
         <StatusChip ok={(runtime?.subtitles.length ?? 0) > 0} label="已读取字幕" />
         <StatusChip ok={caps?.vision === true} label="支持视觉" />
-        <StatusChip ok={caps?.audio === true} label="支持音频" />
         <StatusChip ok={caps?.search === true} label="支持联网" />
       </div>
 
@@ -66,7 +65,6 @@ export function ChatHeader() {
         <span className="model-line">
           Tutor {caps?.tutorModel ?? '—'}
           {caps?.visionModel ? ` · Vision ${caps.visionModel}` : ''}
-          {caps?.audioModel ? ` · Audio ${caps.audioModel}` : ''}
           {caps?.searchModel ? ` · Search ${caps.searchModel}` : ''}
         </span>
       </div>

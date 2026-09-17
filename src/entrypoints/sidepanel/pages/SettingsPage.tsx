@@ -22,13 +22,15 @@ const PROTOCOLS: { id: ProviderProtocol; label: string }[] = listProtocols()
   .filter((p) => p.id !== 'mock')
   .map((p) => ({ id: p.id as ProviderProtocol, label: p.label }));
 
-type RoleId = 'tutor' | 'vision' | 'video' | 'audio' | 'search';
+type RoleId = 'tutor' | 'vision' | 'search';
 
+// Only roles the pipeline can actually serve. The video and audio slots were
+// dropped because no code path sends video or audio content parts — assigning
+// a model to them had no effect on any answer. See UNWIRED_CAPABILITIES in
+// registry/capability-resolver.ts.
 const ROLES: { id: RoleId; label: string; icon: string; capKey: keyof ModelCapabilities }[] = [
   { id: 'tutor', label: '主助教', icon: '🧠', capKey: 'textInput' },
   { id: 'vision', label: '视觉理解', icon: '👁', capKey: 'imageInput' },
-  { id: 'video', label: '视频理解', icon: '🎬', capKey: 'videoInput' },
-  { id: 'audio', label: '音频理解', icon: '🎙', capKey: 'audioInput' },
   { id: 'search', label: '联网核验', icon: '🌐', capKey: 'nativeWebSearch' },
 ];
 
@@ -67,11 +69,12 @@ function ModelCard({
   const [keySavedFlash, setKeySavedFlash] = useState(false);
 
   const caps = model.capabilities;
+  // Audio and Video are omitted on purpose: models saved before the capability
+  // gate still carry those flags in storage, and rendering them would keep
+  // repeating a claim the pipeline cannot honour.
   const capLabels: { key: keyof ModelCapabilities; label: string }[] = [
     { key: 'textInput', label: 'Text' },
     { key: 'imageInput', label: 'Image' },
-    { key: 'audioInput', label: 'Audio' },
-    { key: 'videoInput', label: 'Video' },
     { key: 'nativeWebSearch', label: 'Web' },
   ];
 
@@ -156,8 +159,7 @@ function CapabilitySummary({ models }: { models: SavedModel[] }) {
     { label: '视频字幕学习', ok: has('textInput'), missingReason: '需要文本模型' },
     { label: '专业术语解释', ok: has('textInput'), missingReason: '需要文本模型' },
     { label: '当前画面分析', ok: has('imageInput'), missingReason: '尚未配置视觉模型' },
-    { label: '完整视频理解', ok: has('videoInput'), missingReason: '尚未配置视频模型' },
-    { label: '音频理解', ok: has('audioInput'), missingReason: '尚未配置音频模型' },
+    { label: '整片逐帧分析', ok: has('imageInput'), missingReason: '尚未配置视觉模型' },
     { label: '联网核验', ok: has('nativeWebSearch'), missingReason: '尚未配置联网搜索模型' },
   ];
 

@@ -29,9 +29,25 @@ const PROTOCOL_DEFAULTS: Record<ProviderProtocol, ModelCapabilities> = {
 };
 
 /**
+ * Capabilities no protocol can deliver through this plugin today. Nothing in
+ * the pipeline ever builds a video or audio content part — `TutorEngine` sends
+ * text plus at most one image (see services/tutor-engine.ts `answer()`), so
+ * even a provider that does implement native video_url serialization (dots)
+ * never receives one. Drop entries here in the same change that starts sending
+ * those parts; until then the UI must not advertise them.
+ */
+const UNWIRED_CAPABILITIES: Partial<ModelCapabilities> = {
+  audioInput: false,
+  videoInput: false,
+  videoFileUpload: false,
+  directVideoUrl: false,
+  youtubeUrl: false,
+};
+
+/**
  * Protocol capability limits — what the protocol can actually support,
  * regardless of what the model claims. Effective capability = model cap AND
- * protocol cap AND plugin implementation.
+ * plugin cap (UNWIRED_CAPABILITIES) AND protocol cap.
  */
 const PROTOCOL_CAPABILITY_LIMITS: Partial<Record<ProviderProtocol, Partial<ModelCapabilities>>> = {
   'openai-compatible': {
@@ -53,20 +69,24 @@ const PROTOCOL_CAPABILITY_LIMITS: Partial<Record<ProviderProtocol, Partial<Model
     youtubeUrl: false,
     nativeWebSearch: false,
   },
+  qwen: {
+    // DashScope's OpenAI-compatible mode exposes no grounding tool; native web
+    // search needs the DashScope-native request shape, which is not wired.
+    nativeWebSearch: false,
+  },
 };
 
 /**
- * Apply protocol capability limits. Even if a model claims audioInput, if the
- * protocol (e.g. openai-compatible) can't transmit audio, the effective
- * capability is false. This prevents the UI from showing "available" for a
- * capability the plugin can't actually use.
+ * Apply plugin and protocol capability limits. Even if a model claims
+ * audioInput, the effective capability is false unless the pipeline can
+ * actually send that content. This prevents the UI from showing "available"
+ * for a capability nothing implements.
  */
 function applyProtocolLimits(
   caps: ModelCapabilities,
   protocol: ProviderProtocol,
 ): ModelCapabilities {
-  const limits = PROTOCOL_CAPABILITY_LIMITS[protocol];
-  if (!limits) return caps;
+  const limits = { ...UNWIRED_CAPABILITIES, ...PROTOCOL_CAPABILITY_LIMITS[protocol] };
   return {
     ...caps,
     ...Object.fromEntries(
@@ -85,12 +105,11 @@ function applyProtocolLimits(
  *   3. Protocol defaults (unknown models)
  *   4. Manual override (user-declared at runtime)
  *
- * Remote registry (models.dev) is loaded async by the background and merged
- * into the effective registry at startup. The synchronous resolver here
- * checks local overrides first, then falls back to the built-in registry.
+ * Resolution is fully synchronous and offline — the remote catalog
+ * (models.dev) is never fetched. See ROADMAP.md.
  *
- * The result is then filtered by protocol capability limits to ensure
- * we never show a capability the plugin can't actually use.
+ * The result is then filtered by plugin and protocol capability limits to
+ * ensure we never show a capability the pipeline can't actually deliver.
  */
 export function resolveCapabilities(
   protocol: ProviderProtocol,

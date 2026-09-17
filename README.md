@@ -252,7 +252,9 @@ npx wxt zip -b edge        # 生成 .output/edge-mv3-*.zip
 
 ### 上架注意点
 
-- **权限最小化**：当前 manifest 声明了 `storage / tabs / activeTab / scripting` 与 `<all_urls>` 的 host 权限，商店审核会要求逐项说明用途，请准备好理由：截图取帧用 `activeTab`/`tabs`，`scripting` 用于注入 content script，`<all_urls>` 用于匹配任意站点的 `<video>`。
+- **权限最小化**：manifest 只声明 `storage / activeTab`（外加 WXT 依据 sidepanel 入口自动加入的 `sidePanel`）与 `<all_urls>` host 权限。逐项理由：`storage` 存设置与 API Key；`activeTab` 在用户打开侧边栏后操作当前标签页并截取画面；`sidePanel` 承载 UI；`<all_urls>` 让声明式的 content script 能在任意网站的 `<video>` 上运行，并让扩展能访问用户自己配置的 AI 端点。
+- **不要重复添加 `scripting` 或 `tabs`**：content script 由 manifest 声明式注入，不需要 `scripting`；全部 `browser.tabs.*` 调用都靠 `<all_urls>` + `activeTab` 即可完成。这两项曾被 Chrome 应用商店判定为「请求但不使用」而拒审。
+- 完整的权限理由与审核员测试指引见 `store/审核说明.md`，可直接粘贴进商店后台。
 - Chrome 对 `<all_urls>` 权限审核更严；若被驳回，可考虑改为更具体的 hosts 或改用运行时 `activeTab` 授权。
 - 两个商店对 MV3 `host_permissions` 的展示与授权策略略有差异，Edge 通常更宽松。
 
@@ -260,10 +262,12 @@ npx wxt zip -b edge        # 生成 .output/edge-mv3-*.zip
 
 ## 14. 隐私政策
 
-项目已内置中英双语隐私政策页面（`docs/index.html`），并通过 GitHub Pages 托管在线。商店上架时在「隐私政策 URL」填入：
+项目已内置中英双语隐私政策页面（`docs/index.html`），并通过 GitHub Pages 托管在线。
+
+该仓库设置了 Pages 自定义域名，`https://luvchippy.github.io/AI-Video-Tutor/` 会 301 跳转过去，所以商店的「隐私政策 URL」**直接填自定义域名，避免跳转链**：
 
 ```
-https://luvchippy.github.io/AI-Video-Tutor/
+https://github.923577.xyz/AI-Video-Tutor/
 ```
 
 ---

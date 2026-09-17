@@ -21,7 +21,7 @@
 <body>
 <main>
   <h1>AI Video Tutor — Privacy Policy</h1>
-  <p class="sub">Effective date: 2026-08-31 · 生效日期：2026-08-31</p>
+  <p class="sub">Effective date: 2026-09-17 · 生效日期：2026-09-17</p>
 
   <p>AI Video Tutor is a browser extension that acts as a one-on-one learning assistant beside the video you are watching. This policy explains what data the extension handles and how.</p>
   <p>AI Video Tutor 是一款在浏览器里、陪伴你观看视频的一对一 AI 学习助教（浏览器扩展）。本政策说明该扩展如何处理数据。</p>
@@ -35,31 +35,34 @@
   <ul>
     <li><strong>Your API keys</strong> are stored only in the browser's <code>chrome.storage.local</code> (on your device). They are never written to the page DOM, the console, or any server.</li>
     <li><strong>Subtitles, knowledge chunks, keyframes, conversation history, and learning notes</strong> are stored only in the browser's local IndexedDB (<code>AI_VIDEO_TUTOR_DB</code>) on your device.</li>
+    <li><strong>The page URL, video title, platform and duration</strong> are stored locally with the video record so the extension can recognise a video it has already indexed. The URL is stored only — it is never transmitted anywhere.</li>
     <li>No full videos and no high-resolution screenshots are stored long-term.</li>
   </ul>
   <p>All of the above stays on your device and is removed when you uninstall the extension or clear browser data.</p>
 
   <h2>3. Bring Your Own Key (BYOK) — third-party processing</h2>
-  <p>The extension is <strong>BYOK</strong>: you provide your own API key for the AI model you choose. When you ask a question, the content involved (video subtitles, the current frame, and your question) is sent — <strong>by your explicit action</strong> — directly from your browser to the AI provider you configured. That provider is a third party and processes the data under its own privacy policy. Supported providers may include:</p>
+  <p>The extension is <strong>BYOK</strong>: you provide your own API key for the AI model you choose. When you ask a question, the content involved is sent — <strong>by your explicit action</strong> — directly from your browser to the AI provider you configured. That content is your question, the video's title, platform and duration, the matching subtitles, the pages found by web search, and — for questions about the picture — a single frame of the current image. The video's URL is never sent. The provider is a third party and processes the data under its own privacy policy. Providers you can configure include:</p>
   <ul>
     <li>Google Gemini — <code>generativelanguage.googleapis.com</code></li>
     <li>OpenAI — <code>api.openai.com</code></li>
     <li>DeepSeek — <code>api.deepseek.com</code></li>
     <li>Alibaba Cloud DashScope (Qwen) — <code>dashscope.aliyuncs.com</code></li>
+    <li>Dots API — <code>note3-prev-api.askdiandian.com</code></li>
     <li>Any OpenAI-compatible endpoint or custom base URL you enter yourself</li>
   </ul>
-  <p>We do not proxy, store, or control these requests — it is a direct connection between your browser and the provider you own the key for.</p>
+  <p>We do not proxy, store, or control these requests — it is a direct connection between your browser and the provider you own the key for. Whichever provider you configure is the only third party that ever receives your learning data.</p>
 
   <h2>4. Other network requests</h2>
-  <p>The only other network request is a lookup of the public model catalog at <code>https://models.dev/catalog.json</code> (used to populate the list of available models). This request carries no personal data.</p>
+  <p>There are none. Apart from the AI provider you configure yourself, the extension contacts no server, and it sends no usage data, error reports or diagnostics anywhere. The catalogue of known models ships inside the extension rather than being downloaded.</p>
 
   <h2>5. Permissions — why they are needed</h2>
   <ul>
     <li><code>storage</code> — to save your settings and API keys locally.</li>
-    <li><code>activeTab</code> / <code>tabs</code> — to read the current page and capture the video frame you ask about.</li>
-    <li><code>scripting</code> — to inject a content script that detects the <code>&lt;video&gt;</code> element.</li>
-    <li><code>host_permissions: &lt;all_urls&gt;</code> — so the extension can work on any site that has a video you want to learn from.</li>
+    <li><code>activeTab</code> — to act on the tab you are viewing once you open the assistant, including capturing the video frame you ask about.</li>
+    <li><code>sidePanel</code> — to run the assistant as a side panel beside the video.</li>
+    <li><code>host_permissions: &lt;all_urls&gt;</code> — the content script that detects the <code>&lt;video&gt;</code> element and reads the page's subtitles is declared in the manifest and must run on whichever site you are watching, which can be any site. The same permission lets the extension reach the AI endpoint you configure, since that address is yours to choose.</li>
   </ul>
+  <p>The extension injects no scripts at runtime, does not hold the <code>scripting</code> or <code>tabs</code> permissions, and cannot read your browsing history.</p>
 
   <h2>6. Your control and data deletion</h2>
   <ul>
@@ -82,31 +85,34 @@
   <ul>
     <li><strong>你的 API Key</strong> 只保存在浏览器的 <code>chrome.storage.local</code>（本机）。它不会被写入页面 DOM、控制台或任何服务器。</li>
     <li><strong>字幕、知识片段、关键帧、对话记录、学习笔记</strong> 只保存在浏览器本地的 IndexedDB（<code>AI_VIDEO_TUTOR_DB</code>）。</li>
+    <li><strong>页面 URL、视频标题、平台与时长</strong> 会随视频记录存在本机，用于识别你已经建立过索引的视频。URL 仅存储，不会发送到任何地方。</li>
     <li>不长期保存完整视频、不长期保存高清截图。</li>
   </ul>
   <p>以上数据都留在你的设备上，卸载扩展或清除浏览器数据即被删除。</p>
 
   <h2>3. 自带 Key（BYOK）——第三方处理</h2>
-  <p>本扩展采用 <strong>BYOK</strong>：你为自己选择的 AI 模型提供 API Key。当你提问时，相关的内容（视频字幕、当前画面、你的问题）会<strong>因你的主动操作</strong>、由你的浏览器直接发送给你所配置的 AI 服务商。该服务商是第三方，按其自身的隐私政策处理数据。支持的提供商可能包括：</p>
+  <p>本扩展采用 <strong>BYOK</strong>：你为自己选择的 AI 模型提供 API Key。当你提问时，相关的内容会<strong>因你的主动操作</strong>、由你的浏览器直接发送给你所配置的 AI 服务商。发送的内容是：你的问题、视频的标题／平台／时长、命中的字幕、联网搜索到的网页，以及——当问题涉及画面时——当前画面的一帧。视频 URL 不会发送。该服务商是第三方，按其自身的隐私政策处理数据。你可以配置的服务商包括：</p>
   <ul>
     <li>Google Gemini —— <code>generativelanguage.googleapis.com</code></li>
     <li>OpenAI —— <code>api.openai.com</code></li>
     <li>DeepSeek —— <code>api.deepseek.com</code></li>
     <li>阿里云百炼 DashScope（通义千问）—— <code>dashscope.aliyuncs.com</code></li>
+    <li>Dots API —— <code>note3-prev-api.askdiandian.com</code></li>
     <li>你自己填写的任意 OpenAI-compatible 端点或自定义 Base URL</li>
   </ul>
-  <p>我们不会中转、存储或控制这些请求——这是你的浏览器与你自己持有 Key 的服务商之间的直连。</p>
+  <p>我们不会中转、存储或控制这些请求——这是你的浏览器与你自己持有 Key 的服务商之间的直连。你所配置的那一家，是唯一会收到你学习数据的第三方。</p>
 
   <h2>4. 其他网络请求</h2>
-  <p>唯一的其他网络请求，是拉取公开模型目录 <code>https://models.dev/catalog.json</code>（用于填充可选模型列表）。该请求不携带任何个人数据。</p>
+  <p>没有。除了你自己配置的 AI 服务商，本扩展不联系任何服务器，也不会把使用数据、错误报告或诊断信息发往任何地方。已知模型清单随扩展一起打包，不需要下载。</p>
 
   <h2>5. 权限 —— 为什么需要</h2>
   <ul>
     <li><code>storage</code> —— 在本地保存你的设置与 API Key。</li>
-    <li><code>activeTab</code> / <code>tabs</code> —— 读取当前页面、截取你询问的视频画面。</li>
-    <li><code>scripting</code> —— 注入 content script 以检测 <code>&lt;video&gt;</code> 元素。</li>
-    <li><code>host_permissions: &lt;all_urls&gt;</code> —— 让你想学习的任意带视频网站都能使用本扩展。</li>
+    <li><code>activeTab</code> —— 在你打开助教后操作你正在看的标签页，包括截取你询问的视频画面。</li>
+    <li><code>sidePanel</code> —— 让助教以侧边栏形式固定在视频旁边。</li>
+    <li><code>host_permissions: &lt;all_urls&gt;</code> —— 检测 <code>&lt;video&gt;</code> 元素、读取页面字幕的 content script 在 manifest 中声明，需要在你观看的任意网站上运行，而这些网站无法预先限定。同一权限也让扩展能访问你自己配置的 AI 端点，因为那个地址由你决定。</li>
   </ul>
+  <p>本扩展不在运行时注入脚本，不持有 <code>scripting</code> 或 <code>tabs</code> 权限，也无法读取你的浏览记录。</p>
 
   <h2>6. 你的控制权与数据删除</h2>
   <ul>

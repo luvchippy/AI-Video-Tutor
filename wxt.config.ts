@@ -8,8 +8,12 @@ export default defineConfig({
     name: 'AI Video Tutor',
     description:
       'A 1-on-1 AI learning assistant that sits beside the video you are watching.',
-    permissions: ['storage', 'tabs', 'activeTab', 'scripting'],
+    // Keep this list minimal: the content script is declared in the manifest
+    // by WXT rather than injected at runtime, so `scripting` is not needed, and
+    // every browser.tabs.* call works off `<all_urls>` + `activeTab` alone.
+    permissions: ['storage', 'activeTab'],
     host_permissions: ['<all_urls>'],
+    homepage_url: 'https://github.com/luvchippy/AI-Video-Tutor',
     icons: {
       16: '/icons/icon-16.png',
       32: '/icons/icon-32.png',

@@ -178,23 +178,18 @@ function computeCapabilityStatus(set: ProviderSet): CapabilityStatus {
     vision:
       (set.vision?.capabilities.imageInput ?? false) ||
       set.tutor.capabilities.imageInput,
-    video:
-      (set.video?.capabilities.videoInput ?? false) ||
-      set.tutor.capabilities.videoInput,
-    audio:
-      (set.audio?.capabilities.audioInput ?? false) ||
-      set.tutor.capabilities.audioInput,
+    // Video and audio stay false regardless of what a model claims: the
+    // pipeline never sends those content parts, so the video/audio role slots
+    // are inert. See UNWIRED_CAPABILITIES in registry/capability-resolver.ts.
+    video: false,
+    audio: false,
     search: set.search.available,
     tutorModel: set.tutor.displayName,
     visionModel:
       set.vision?.displayName ??
       (set.tutor.capabilities.imageInput ? set.tutor.displayName : null),
-    videoModel:
-      set.video?.displayName ??
-      (set.tutor.capabilities.videoInput ? set.tutor.displayName : null),
-    audioModel:
-      set.audio?.displayName ??
-      (set.tutor.capabilities.audioInput ? set.tutor.displayName : null),
+    videoModel: null,
+    audioModel: null,
     searchModel: set.searchModelName,
     isMock: set.tutor.provider === 'mock',
   };
@@ -221,7 +216,12 @@ async function capturePageFrame(): Promise<FrameCaptureResult> {
   }
 
   try {
-    const full = await browser.tabs.captureVisibleTab(tabId, {
+    // The first argument of captureVisibleTab is a *window* id, not a tab id,
+    // so passing `tabId` there fails with "No window with id: N" on most
+    // machines and this fallback path silently returns nothing. Passing only
+    // the options object lets windowId default to the current window, which is
+    // the one holding the active tab queried above.
+    const full = await browser.tabs.captureVisibleTab({
       format: 'jpeg',
       quality: 80,
     });
