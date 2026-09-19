@@ -19,6 +19,10 @@ stats.html
 
 # OpenCode / coding-agent dev notes (personal, not project docs)
 OpenCode*.md
+HANDOFF.md
+
+# stray scratch file at the repo root (personal, not project content)
+/1.txt
 
 # store listing assets (generated marketing binaries; may contain user content).
 # Only the binaries are ignored — the written submission notes in this folder are

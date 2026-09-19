@@ -20,6 +20,9 @@ export function ChatHeader() {
     ? 'Local'
     : platformLabel(runtime?.pageContext?.platformId ?? 'generic');
   const title = localVideo?.title ?? runtime?.videoTitle ?? null;
+  // Read from the page's own markup by the platform adapter. Displayed only —
+  // it is never part of the request sent to a model (see privacy section 3).
+  const creator = isLocal ? null : (runtime?.pageContext?.creator?.name ?? null);
 
   const playback = localPlayback ?? runtime?.playback;
   const currentTime = playback?.currentTime ?? null;
@@ -48,6 +51,12 @@ export function ChatHeader() {
           {title ?? '未检测到视频'}
         </span>
       </div>
+
+      {creator && (
+        <div className="chat-header-row muted">
+          <span className="creator-name" title={creator}>👤 {creator}</span>
+        </div>
+      )}
 
       <div className="chat-header-row clock">
         <span className="clock-time">{formatClock(currentTime, duration)}</span>

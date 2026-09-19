@@ -3,6 +3,7 @@
  */
 
 import { z } from 'zod';
+import { SEARCH_SERVICE_IDS } from '../types/model';
 
 export const LearnerLevelSchema = z.enum([
   'quick',
@@ -43,7 +44,7 @@ export const SavedModelSchema = z.object({
   modelId: z.string(),
   capabilities: ModelCapabilitiesSchema,
   connectionStatus: z.enum(['connected', 'failed', 'untested']),
-  capabilitySource: z.enum(['registry', 'remote-registry', 'local-override', 'protocol-default', 'manual', 'mixed']),
+  capabilitySource: z.enum(['registry', 'remote-registry', 'local-override', 'protocol-default', 'manual', 'mixed', 'detected']),
 });
 
 export const ModelAssignmentSchema = z.object({
@@ -58,12 +59,18 @@ export const ModelConfigSchema = z.object({
   search: ModelAssignmentSchema.nullable(),
 });
 
+export const SearchServiceSchema = z.enum(SEARCH_SERVICE_IDS);
+
 export const SettingsSchema = z.object({
   learnerLevel: LearnerLevelSchema,
   learnerBackground: z.string(),
   savedModels: z.array(SavedModelSchema),
   modelConfig: ModelConfigSchema,
   activePreset: z.string().nullable(),
+  // `.default()` rather than a required field: settings written before this
+  // field existed must still parse. A required field would fail safeParse and
+  // `loadSettings` would silently reset every saved model.
+  searchService: SearchServiceSchema.default('none'),
 });
 
 export type SettingsSchema = z.infer<typeof SettingsSchema>;

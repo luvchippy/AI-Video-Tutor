@@ -40,6 +40,12 @@ export function planAnswer(
     frameAvailable: boolean;
     searchAvailable: boolean;
     intentHint?: QuestionIntent;
+    /**
+     * The search provider's own explanation for being unavailable, when it has
+     * one. A dedicated service that is missing its API key has something far
+     * more useful to say than the generic "no web search" text.
+     */
+    searchDisabledReason?: string;
   },
 ): AnswerPlan {
   const intent =
@@ -51,7 +57,9 @@ export function planAnswer(
   const needsSearch = intent === 'FACT_CHECK' || intent === 'CURRENT_INFO';
   const useSearch = needsSearch && opts.searchAvailable;
   const searchDisabledReason =
-    needsSearch && !opts.searchAvailable ? NO_WEB_SEARCH_MESSAGE : null;
+    needsSearch && !opts.searchAvailable
+      ? (opts.searchDisabledReason ?? NO_WEB_SEARCH_MESSAGE)
+      : null;
   return { intent, useVision, useSearch, searchDisabledReason };
 }
 
@@ -90,6 +98,7 @@ export class TutorEngine {
       visionAvailable,
       frameAvailable: input.frameDataUrl != null,
       searchAvailable: this.search.available,
+      searchDisabledReason: this.search.reason,
       intentHint: input.intentHint,
     });
 

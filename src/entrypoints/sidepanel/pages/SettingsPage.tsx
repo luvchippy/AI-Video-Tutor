@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useApp } from '../AppContext';
 import { sendBackground } from '../lib';
-import { resolveCapabilities } from '@/registry/capability-resolver';
+import { resolveCapabilities, capabilityDisplayStatus } from '@/registry/capability-resolver';
+import type { CapabilityStatus } from '@/registry/capability-resolver';
 import { listProtocols, getProtocol } from '@/registry/protocol-registry';
 import type {
   LearnerLevel,
   ModelCapabilities,
   ProviderProtocol,
   SavedModel,
+  SearchServiceId,
 } from '@/types/model';
+import { EXTERNAL_SEARCH_SERVICE_LABEL } from '@/providers/search/web-search';
 import type { ProviderTestResult } from '@/types/messaging';
 
 const LEVELS: { id: LearnerLevel; label: string }[] = [
@@ -34,6 +37,12 @@ const ROLES: { id: RoleId; label: string; icon: string; capKey: keyof ModelCapab
   { id: 'search', label: '联网核验', icon: '🌐', capKey: 'nativeWebSearch' },
 ];
 
+/** The dedicated search services offered above the model-native fallback. */
+const SEARCH_SERVICES: { id: Exclude<SearchServiceId, 'none'>; label: string }[] = [
+  { id: 'tavily', label: EXTERNAL_SEARCH_SERVICE_LABEL.tavily },
+  { id: 'brave', label: EXTERNAL_SEARCH_SERVICE_LABEL.brave },
+];
+
 function TestResultDisplay({ result }: { result: ProviderTestResult | null }) {
   if (!result) return null;
   if (result.ok) {
@@ -53,30 +62,78 @@ function TestResultDisplay({ result }: { result: ProviderTestResult | null }) {
   );
 }
 
+/**
+ * Capability keys that hold a boolean. `contextWindow` is a number, so the
+ * narrower key type keeps `caps[key]` assignable to a boolean predicate.
+ */
+type BooleanCapabilityKey = {
+  [K in keyof ModelCapabilities]-?: ModelCapabilities[K] extends boolean
+    ? K
+    : never;
+}[keyof ModelCapabilities];
+
+/** Badge marks and tooltips for `capabilityDisplayStatus`. */
+const CAP_STATUS_MARK: Record<CapabilityStatus, string> = {
+  verified: '✓',
+  registry: '◐',
+  untested: '?',
+  unsupported: '×',
+};
+
+const CAP_STATUS_TITLE: Record<CapabilityStatus, string> = {
+  verified: '已对端点实测通过',
+  registry: '来自模型表，未实测',
+  untested: '未实测',
+  unsupported: '不支持',
+};
+
+const SOURCE_LABEL: Record<SavedModel['capabilitySource'], string> = {
+  detected: '已实测',
+  registry: '模型表已知',
+  'local-override': '本地覆盖表',
+  'remote-registry': '远端目录',
+  'protocol-default': '协议默认值',
+  manual: '手动指定',
+  mixed: '混合来源',
+};
+
 function ModelCard({
   model,
   keySaved,
   onDelete,
   onReplaceKey,
+  onDetect,
 }: {
   model: SavedModel;
   keySaved: boolean;
   onDelete: () => void;
   onReplaceKey: (newKey: string) => Promise<void>;
+  onDetect: () => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [showKeyInput, setShowKeyInput] = useState(false);
   const [newKey, setNewKey] = useState('');
   const [keySavedFlash, setKeySavedFlash] = useState(false);
+  const [detecting, setDetecting] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
 
   const caps = model.capabilities;
+  const wasTested = model.capabilitySource === 'detected';
   // Audio and Video are omitted on purpose: models saved before the capability
   // gate still carry those flags in storage, and rendering them would keep
   // repeating a claim the pipeline cannot honour.
-  const capLabels: { key: keyof ModelCapabilities; label: string }[] = [
+  const capLabels: { key: BooleanCapabilityKey; label: string }[] = [
     { key: 'textInput', label: 'Text' },
     { key: 'imageInput', label: 'Image' },
     { key: 'nativeWebSearch', label: 'Web' },
   ];
+
+  const handleDetect = async () => {
+    setDetecting(true);
+    setDetectError(null);
+    const res = await onDetect();
+    setDetecting(false);
+    if (!res.ok) setDetectError(res.error ?? '探测失败');
+  };
 
   const handleSaveKey = async () => {
     if (!newKey.trim()) return;
@@ -94,17 +151,39 @@ function ModelCard({
         <button className="text-btn danger" onClick={onDelete}>删除</button>
       </div>
       <div className="model-card-caps">
-        {capLabels
-          .filter((c) => caps[c.key])
-          .map((c) => (
-            <span key={c.key} className="cap-badge">✓ {c.label}</span>
-          ))}
+        {capLabels.map((c) => {
+          const status = capabilityDisplayStatus(
+            caps[c.key],
+            model.capabilitySource,
+            wasTested,
+          );
+          return (
+            <span
+              key={c.key}
+              className={`cap-badge cap-${status}`}
+              title={CAP_STATUS_TITLE[status]}
+            >
+              {CAP_STATUS_MARK[status]} {c.label}
+            </span>
+          );
+        })}
       </div>
       <div className="model-card-status">
         <span className={`conn-status ${model.connectionStatus}`}>
           {model.connectionStatus === 'connected' ? '● 已连接' : model.connectionStatus === 'failed' ? '● 连接失败' : '● 未测试'}
         </span>
-        <span className="muted small">{model.capabilitySource === 'registry' ? '◐ Registry 已知' : model.capabilitySource}</span>
+        <span className="muted small">来源：{SOURCE_LABEL[model.capabilitySource]}</span>
+      </div>
+      <div className="model-card-probe">
+        <button
+          className="text-btn small"
+          onClick={() => void handleDetect()}
+          disabled={detecting || !keySaved}
+          title={keySaved ? '用两次最小请求实测文本与图像输入' : '需要先保存 API Key'}
+        >
+          {detecting ? '探测中…' : '自动探测能力'}
+        </button>
+        {detectError && <span className="error-text small">{detectError}</span>}
       </div>
       <div className="model-card-key">
         {keySavedFlash ? (
@@ -143,7 +222,13 @@ function ModelCard({
   );
 }
 
-function CapabilitySummary({ models }: { models: SavedModel[] }) {
+function CapabilitySummary({
+  models,
+  searchService,
+}: {
+  models: SavedModel[];
+  searchService: SearchServiceId;
+}) {
   if (models.length === 0) {
     return (
       <div className="cap-summary">
@@ -154,13 +239,16 @@ function CapabilitySummary({ models }: { models: SavedModel[] }) {
 
   const allCaps = models.map((m) => m.capabilities);
   const has = (key: keyof ModelCapabilities) => allCaps.some((c) => c[key]);
+  // A dedicated search service satisfies the search role on its own, so the
+  // summary must not report "no web search" while Tavily/Brave is configured.
+  const searchReady = searchService !== 'none' || has('nativeWebSearch');
 
   const features: { label: string; ok: boolean; missingReason: string | null }[] = [
     { label: '视频字幕学习', ok: has('textInput'), missingReason: '需要文本模型' },
     { label: '专业术语解释', ok: has('textInput'), missingReason: '需要文本模型' },
     { label: '当前画面分析', ok: has('imageInput'), missingReason: '尚未配置视觉模型' },
     { label: '整片逐帧分析', ok: has('imageInput'), missingReason: '尚未配置视觉模型' },
-    { label: '联网核验', ok: has('nativeWebSearch'), missingReason: '尚未配置联网搜索模型' },
+    { label: '联网核验', ok: searchReady, missingReason: '尚未配置搜索服务或联网搜索模型' },
   ];
 
   return (
@@ -188,6 +276,10 @@ export function SettingsPage() {
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
   const [keySavedStatus, setKeySavedStatus] = useState<Record<string, boolean>>({});
   const [keySavedFlash, setKeySavedFlash] = useState(false);
+  const [searchKeyInput, setSearchKeyInput] = useState('');
+  const [showSearchKeyInput, setShowSearchKeyInput] = useState(false);
+  const [searchKeyFlash, setSearchKeyFlash] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState<Record<string, boolean>>({});
 
   // Load key status for all saved models on mount and when models change
   const savedModelsKey = settings?.savedModels.map((m) => `${m.protocol}:${m.baseUrl ?? ''}`).join('|') ?? '';
@@ -208,6 +300,14 @@ export function SettingsPage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedModelsKey]);
+
+  // The dedicated search service stores its key under the same scheme as model
+  // keys (`<service>` with no base URL), so one status call answers for it too.
+  useEffect(() => {
+    void sendBackground({ type: 'GET_API_KEY_STATUS' }).then((res) => {
+      if (res.type === 'API_KEY_STATUS') setApiKeyStatus(res.entries);
+    });
+  }, []);
 
   if (!settings) return <div className="page">加载中…</div>;
 
@@ -337,6 +437,43 @@ export function SettingsPage() {
     await reloadKeyStatus();
   };
 
+  /**
+   * Probe the live endpoint and persist what it reports. Only text and image
+   * input are probed; every other capability keeps whatever the registry or
+   * protocol resolved, because it cannot be established cheaply.
+   */
+  const handleDetectCapabilities = async (
+    model: SavedModel,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const res = await sendBackground({
+      type: 'DETECT_CAPABILITIES',
+      protocol: model.protocol,
+      baseUrl: model.baseUrl,
+      modelId: model.modelId,
+      current: model.capabilities,
+    });
+    if (res.type !== 'CAPABILITIES_DETECTED') {
+      return { ok: false, error: '意外的响应类型' };
+    }
+    if (!res.ok || !res.capabilities) {
+      return { ok: false, error: res.error ?? '探测失败' };
+    }
+    await sendBackground({
+      type: 'SAVE_MODEL',
+      model: {
+        ...model,
+        capabilities: res.capabilities,
+        capabilitySource: 'detected',
+        connectionStatus: res.capabilities.textInput ? 'connected' : 'failed',
+      },
+    });
+    const settingsRes = await sendBackground({ type: 'GET_SETTINGS' });
+    if (settingsRes.type === 'SETTINGS') {
+      await updateSettings(settingsRes.settings);
+    }
+    return { ok: true };
+  };
+
   const handleRoleChange = async (role: RoleId, modelId: string | null) => {
     const newConfig = { ...settings.modelConfig };
     if (role === 'tutor') {
@@ -345,6 +482,29 @@ export function SettingsPage() {
       newConfig[role] = modelId ? { modelId } : null;
     }
     await updateSettings({ ...settings, modelConfig: newConfig });
+  };
+
+  const applySearchService = async (service: SearchServiceId) => {
+    setShowSearchKeyInput(false);
+    setSearchKeyInput('');
+    await updateSettings({ ...settings, searchService: service });
+  };
+
+  const saveSearchKey = async () => {
+    const key = searchKeyInput.trim();
+    if (!key || settings.searchService === 'none') return;
+    await sendBackground({
+      type: 'SAVE_API_KEY',
+      provider: settings.searchService,
+      baseUrl: null,
+      key,
+    });
+    setSearchKeyInput('');
+    setShowSearchKeyInput(false);
+    setSearchKeyFlash(true);
+    setTimeout(() => setSearchKeyFlash(false), 3000);
+    const res = await sendBackground({ type: 'GET_API_KEY_STATUS' });
+    if (res.type === 'API_KEY_STATUS') setApiKeyStatus(res.entries);
   };
 
   // Filter models eligible for each role
@@ -456,6 +616,7 @@ export function SettingsPage() {
               keySaved={isKeySaved(m)}
               onDelete={() => void handleDelete(m.id)}
               onReplaceKey={(newKey) => handleReplaceKey(m, newKey)}
+              onDetect={() => handleDetectCapabilities(m)}
             />
           ))}
         </div>
@@ -491,10 +652,71 @@ export function SettingsPage() {
         })}
       </section>
 
+      {/* 联网搜索服务 */}
+      <section className="settings-section">
+        <h3>联网搜索服务</h3>
+        <p className="muted small">
+          独立的搜索引擎，不依赖模型自带的联网能力。配置后，「联网核验」会优先用它搜索；选择「不使用」时才回退到支持联网的模型。API Key 同样只保存在本机。
+        </p>
+        <div className="role-row">
+          <label className="role-label">🌐 搜索服务</label>
+          <select
+            value={settings.searchService}
+            onChange={(e) => void applySearchService(e.target.value as SearchServiceId)}
+          >
+            <option value="none">— 不使用（回退到模型） —</option>
+            {SEARCH_SERVICES.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+        {settings.searchService !== 'none' && (
+          <>
+            {searchKeyFlash ? (
+              <p className="test-result ok">✓ API Key 已保存</p>
+            ) : apiKeyStatus[settings.searchService] && !showSearchKeyInput ? (
+              <div className="model-card-key">
+                <span className="key-status saved">🔑 Key 已保存</span>
+                <button className="text-btn small" onClick={() => setShowSearchKeyInput(true)}>
+                  替换 API Key
+                </button>
+              </div>
+            ) : (
+              <div className="key-replace-row">
+                <input
+                  type="password"
+                  placeholder={`${EXTERNAL_SEARCH_SERVICE_LABEL[settings.searchService]} API Key`}
+                  value={searchKeyInput}
+                  onChange={(e) => setSearchKeyInput(e.target.value)}
+                />
+                <button
+                  className="quick-btn"
+                  onClick={() => void saveSearchKey()}
+                  disabled={!searchKeyInput.trim()}
+                >
+                  保存
+                </button>
+                {apiKeyStatus[settings.searchService] && (
+                  <button
+                    className="text-btn"
+                    onClick={() => { setShowSearchKeyInput(false); setSearchKeyInput(''); }}
+                  >
+                    取消
+                  </button>
+                )}
+              </div>
+            )}
+            {!apiKeyStatus[settings.searchService] && (
+              <span className="key-status missing">🔑 未保存 Key，联网核验暂不可用</span>
+            )}
+          </>
+        )}
+      </section>
+
       {/* 当前能力 */}
       <section className="settings-section">
         <h3>当前能力</h3>
-        <CapabilitySummary models={savedModels} />
+        <CapabilitySummary models={savedModels} searchService={settings.searchService} />
       </section>
     </div>
   );

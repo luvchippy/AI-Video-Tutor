@@ -133,6 +133,39 @@ export function blobToDataUrl(blob: Blob): Promise<string> {
 }
 
 /**
+ * Draw a region of an already-decoded bitmap onto an OffscreenCanvas and encode
+ * it as JPEG, bounded by `maxWidth`. Shared by the two service-worker paths
+ * below so the canvas plumbing exists once.
+ */
+async function renderJpeg(
+  source: ImageBitmap,
+  region: { sx: number; sy: number; sw: number; sh: number },
+  maxWidth: number,
+  quality: number,
+): Promise<string> {
+  const ratio = Math.min(1, maxWidth / Math.max(1, region.sw));
+  const canvas = new OffscreenCanvas(
+    Math.max(1, Math.round(region.sw * ratio)),
+    Math.max(1, Math.round(region.sh * ratio)),
+  );
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('offscreen canvas 2d context unavailable');
+  ctx.drawImage(
+    source,
+    region.sx,
+    region.sy,
+    region.sw,
+    region.sh,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
+  const out = await canvas.convertToBlob({ type: 'image/jpeg', quality });
+  return blobToDataUrl(out);
+}
+
+/**
  * Crop a full-page/tab screenshot (data URL) to the video region using
  * OffscreenCanvas — works in the MV3 service worker (no DOM).
  */
@@ -146,31 +179,33 @@ export async function cropDataUrl(
   const maxWidth = opts.maxWidth ?? DEFAULT_MAX_WIDTH;
   const quality = opts.quality ?? DEFAULT_QUALITY;
   const bitmap = await createImageBitmap(dataUrlToBlob(dataUrl));
-  const region = videoCropRegion(
-    rect,
-    bitmap.width,
-    bitmap.height,
-    viewportWidth,
-    viewportHeight,
-  );
-  const ratio = Math.min(1, maxWidth / Math.max(1, region.sw));
-  const canvas = new OffscreenCanvas(
-    Math.max(1, Math.round(region.sw * ratio)),
-    Math.max(1, Math.round(region.sh * ratio)),
-  );
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('offscreen canvas 2d context unavailable');
-  ctx.drawImage(
+  return renderJpeg(
     bitmap,
-    region.sx,
-    region.sy,
-    region.sw,
-    region.sh,
-    0,
-    0,
-    canvas.width,
-    canvas.height,
+    videoCropRegion(rect, bitmap.width, bitmap.height, viewportWidth, viewportHeight),
+    maxWidth,
+    quality,
   );
-  const out = await canvas.convertToBlob({ type: 'image/jpeg', quality });
-  return blobToDataUrl(out);
+}
+
+/** Keyframe thumbnails are a browse-only preview; 160px keeps them a few KB. */
+export const THUMBNAIL_MAX_WIDTH = 160;
+export const THUMBNAIL_QUALITY = 0.6;
+
+/**
+ * Shrink a frame to a thumbnail-sized JPEG. Derived from the analysis frame
+ * (480px), which is roughly forty times its size — and a one-hour video produces
+ * hundreds of keyframes, so only the small form is persisted.
+ */
+export async function downscaleDataUrl(
+  dataUrl: string,
+  maxWidth: number = THUMBNAIL_MAX_WIDTH,
+  quality: number = THUMBNAIL_QUALITY,
+): Promise<string> {
+  const bitmap = await createImageBitmap(dataUrlToBlob(dataUrl));
+  return renderJpeg(
+    bitmap,
+    { sx: 0, sy: 0, sw: bitmap.width, sh: bitmap.height },
+    maxWidth,
+    quality,
+  );
 }

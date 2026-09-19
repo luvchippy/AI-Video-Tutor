@@ -71,4 +71,63 @@ describe('resolveSubtitles', () => {
     expect(result.segments).toEqual(external);
     expect(result.sourceLabel).toBe('外部字幕文件');
   });
+
+  it('uses pre-extracted html segments without touching the DOM', () => {
+    // Call history is shared across the tests in this file, so clear it before
+    // asserting that this path never reaches for the DOM.
+    vi.mocked(extractTextTrackSubtitles).mockClear();
+    const htmlSegs: SubtitleSegment[] = [
+      { start: 1, end: 3, text: 'Already read', source: 'html-track' },
+    ];
+    const result = resolveSubtitles({
+      htmlTrackVideo: null,
+      externalSegments: null,
+      htmlSegments: htmlSegs,
+    });
+    expect(result.segments).toEqual(htmlSegs);
+    expect(result.sourceLabel).toBe('HTML 字幕轨');
+    expect(extractTextTrackSubtitles).not.toHaveBeenCalled();
+  });
+
+  it('falls back to platform captions when nothing else has subtitles', () => {
+    const platform: SubtitleSegment[] = [
+      { start: 0, end: 2, text: '平台字幕', source: 'platform' },
+    ];
+    vi.mocked(extractTextTrackSubtitles).mockReturnValue([]);
+    const result = resolveSubtitles({
+      htmlTrackVideo: {} as HTMLVideoElement,
+      externalSegments: null,
+      platformSegments: platform,
+    });
+    expect(result.segments).toEqual(platform);
+    expect(result.sourceLabel).toBe('平台字幕');
+  });
+
+  it('prefers html track over platform captions', () => {
+    const htmlSegs: SubtitleSegment[] = [
+      { start: 1, end: 3, text: 'HTML', source: 'html-track' },
+    ];
+    const platform: SubtitleSegment[] = [
+      { start: 0, end: 2, text: 'Platform', source: 'platform' },
+    ];
+    const result = resolveSubtitles({
+      htmlTrackVideo: null,
+      externalSegments: null,
+      htmlSegments: htmlSegs,
+      platformSegments: platform,
+    });
+    expect(result.segments).toEqual(htmlSegs);
+    expect(result.sourceLabel).toBe('HTML 字幕轨');
+  });
+
+  it('ignores an empty platform result and reports no subtitles', () => {
+    const result = resolveSubtitles({
+      htmlTrackVideo: null,
+      externalSegments: null,
+      htmlSegments: [],
+      platformSegments: [],
+    });
+    expect(result.segments).toEqual([]);
+    expect(result.sourceLabel).toBe('未发现字幕');
+  });
 });

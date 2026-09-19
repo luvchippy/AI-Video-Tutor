@@ -12,6 +12,7 @@ import type { RuntimeContext } from '@/types/messaging';
 import type { PlaybackSnapshot, SubtitleSegment } from '@/types/playback';
 import { sendBackground } from './lib';
 import { revokeObjectUrl } from '@/adapters/media/local-file';
+import { usePlaybackSampling, type PlaybackSamplingStatus } from './usePlaybackSampling';
 
 export interface LocalVideoState {
   videoId: string;
@@ -25,10 +26,14 @@ interface AppState {
   localVideo: LocalVideoState | null;
   localPlayback: PlaybackSnapshot | null;
   externalSubtitles: SubtitleSegment[] | null;
+  /** Opt-in for capturing a frame at each 10s boundary while a page video plays. */
+  samplingEnabled: boolean;
+  sampling: PlaybackSamplingStatus;
   updateSettings: (s: Settings) => Promise<void>;
   setLocalVideo: (v: LocalVideoState | null) => void;
   setLocalPlayback: (p: PlaybackSnapshot | null) => void;
   setExternalSubtitles: (s: SubtitleSegment[] | null) => void;
+  setSamplingEnabled: (enabled: boolean) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -39,7 +44,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [localVideo, setLocalVideoState] = useState<LocalVideoState | null>(null);
   const [localPlayback, setLocalPlaybackState] = useState<PlaybackSnapshot | null>(null);
   const [externalSubtitles, setExternalSubtitlesState] = useState<SubtitleSegment[] | null>(null);
+  const [samplingEnabled, setSamplingEnabled] = useState(false);
   const localVideoRef = useRef<LocalVideoState | null>(null);
+
+  // Playback sampling applies to the page's own video only: a dropped local file
+  // has its own explicit "analyze the whole video" action in the player. It stays
+  // off until the user asks for it, because every frame costs a vision request.
+  const sampling = usePlaybackSampling({
+    videoId: localVideo === null ? (runtime?.videoId ?? null) : null,
+    playback: runtime?.playback ?? null,
+    enabled: samplingEnabled,
+  });
 
   useEffect(() => {
     sendBackground({ type: 'GET_SETTINGS' }).then((res) => {
@@ -107,10 +122,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         localVideo,
         localPlayback,
         externalSubtitles,
+        samplingEnabled,
+        sampling,
         updateSettings,
         setLocalVideo,
         setLocalPlayback,
         setExternalSubtitles,
+        setSamplingEnabled,
       }}
     >
       {children}

@@ -3,8 +3,9 @@ import { snapshotFromVideo } from '@/playback/clock';
 import { extractTextTrackSubtitles } from '@/services/subtitle';
 import { captureVideoFrame } from '@/services/frame-capture';
 import { detectPlatform } from '@/adapters/media/direct-url';
+import { matchPlatform } from '@/adapters/platform/registry';
 import type { PageContext } from '@/types/page-context';
-import type { PlaybackSnapshot } from '@/types/playback';
+import type { CreatorInfo, PlaybackSnapshot } from '@/types/playback';
 import type { ContentRequest, ContentResponse } from '@/types/messaging';
 
 const EMPTY_SNAPSHOT: PlaybackSnapshot = {
@@ -15,14 +16,33 @@ const EMPTY_SNAPSHOT: PlaybackSnapshot = {
   confidence: 'unknown',
 };
 
-function buildPageContext(): PageContext {
+/**
+ * Creator lookups run a handful of `querySelector` calls, and `GET_PAGE_CONTEXT`
+ * is polled once a second by the side panel, so the answer is memoized per URL
+ * (the SPA navigation case). A page that has not rendered its channel block yet
+ * caches null for that URL — the platform metadata and the schema.org author
+ * markup are both present in the initial HTML, so the first pass already sees
+ * them in practice.
+ */
+let creatorCache: { url: string; creator: CreatorInfo | null } | null = null;
+
+async function readCreator(context: PageContext): Promise<CreatorInfo | null> {
+  if (creatorCache?.url === context.url) return creatorCache.creator;
+  const adapter = matchPlatform(context);
+  const creator = adapter ? await adapter.getCreatorInfo() : null;
+  creatorCache = { url: context.url, creator };
+  return creator;
+}
+
+async function buildPageContext(): Promise<PageContext> {
   const host = location.hostname;
-  return {
+  const context: PageContext = {
     url: location.href,
     host,
     title: document.title,
     platformId: detectPlatform(host) ?? 'generic',
   };
+  return { ...context, creator: await readCreator(context) };
 }
 
 export default defineContentScript({
@@ -48,7 +68,7 @@ export default defineContentScript({
 async function handle(message: ContentRequest): Promise<ContentResponse> {
   switch (message.type) {
     case 'GET_PAGE_CONTEXT':
-      return { type: 'PAGE_CONTEXT', context: buildPageContext() };
+      return { type: 'PAGE_CONTEXT', context: await buildPageContext() };
 
     case 'GET_PLAYBACK': {
       const video = findMainVideo();

@@ -14,8 +14,15 @@ import type {
   Conversation,
   Message,
   VideoRecord,
+  Keyframe,
 } from './knowledge';
-import type { Settings, ModelSlot, SavedModel, ProviderProtocol } from './model';
+import type {
+  Settings,
+  ModelSlot,
+  SavedModel,
+  ProviderProtocol,
+  ModelCapabilities,
+} from './model';
 import type { QuestionIntent } from './intent';
 
 /* ------------------------------------------------------------------ */
@@ -101,8 +108,16 @@ export type BackgroundRequest =
   | { type: 'SAVE_MODEL'; model: SavedModel; apiKey?: string }
   | { type: 'DELETE_MODEL'; modelId: string }
   | { type: 'GET_MODEL_KEY_STATUS'; models: { protocol: string; baseUrl?: string }[] }
-  | { type: 'DETECT_CAPABILITIES'; protocol: ProviderProtocol; baseUrl?: string; modelId: string }
+  | {
+      type: 'DETECT_CAPABILITIES';
+      protocol: ProviderProtocol;
+      baseUrl?: string;
+      modelId: string;
+      /** Capabilities to probe against; defaults to the resolved ones. */
+      current?: ModelCapabilities;
+    }
   | { type: 'GET_TIMELINE'; videoId: string }
+  | { type: 'GET_KEYFRAMES'; videoId: string }
   | { type: 'BUILD_INDEX'; videoId: string; externalSubtitles?: SubtitleSegment[] }
   | { type: 'CAPTURE_FRAME' }
   | { type: 'ANALYZE_FRAME'; videoId: string; timestamp: number; dataUrl: string }
@@ -131,9 +146,29 @@ export type BackgroundResponse =
   | { type: 'MODEL_SAVED'; ok: boolean }
   | { type: 'MODEL_DELETED'; ok: boolean }
   | { type: 'MODEL_KEY_STATUS'; entries: Record<string, boolean> }
-  | { type: 'CAPABILITIES_DETECTED'; ok: boolean; capabilities?: { textInput: boolean; imageInput: boolean; functionCalling: boolean }; error?: string }
+  | {
+      type: 'CAPABILITIES_DETECTED';
+      ok: boolean;
+      /** Capabilities after probing, ready to persist onto the SavedModel. */
+      capabilities?: ModelCapabilities;
+      /** What was actually probed. `null` means the value was left untouched. */
+      probed?: { textInput: boolean | null; imageInput: boolean | null };
+      error?: string;
+    }
   | { type: 'TIMELINE'; chunks: KnowledgeChunk[] }
-  | { type: 'INDEX_RESULT'; ok: boolean; chunkCount: number; error?: string }
+  | { type: 'KEYFRAMES'; keyframes: Keyframe[] }
+  | {
+      type: 'INDEX_RESULT';
+      ok: boolean;
+      chunkCount: number;
+      /** Chunks the tutor model actually wrote AI fields for. */
+      aiEnriched?: number;
+      /** Set when enrichment was skipped or partly failed. */
+      aiNote?: string;
+      /** Which subtitle source was used ("外部字幕文件" / "平台字幕" / …). */
+      sourceLabel?: string;
+      error?: string;
+    }
   | { type: 'FRAME_CAPTURED'; frame: FrameCaptureResult }
   | { type: 'ANALYZE_FRAME_RESULT'; ok: boolean; error?: string }
   | { type: 'LOCAL_VIDEO_REGISTERED'; ok: boolean }

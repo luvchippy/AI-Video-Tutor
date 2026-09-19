@@ -32,6 +32,32 @@ export async function listKeyframes(videoId: string): Promise<Keyframe[]> {
   return db.keyframes.where('videoId').equals(videoId).sortBy('timestamp');
 }
 
+/**
+ * Flag that a video now has at least one analyzed keyframe.
+ *
+ * Analysis can run before any index is built (playback sampling writes a
+ * keyframe the moment the user enables it), so a missing video record is
+ * CREATED here rather than the flag being dropped on the floor.
+ */
+export async function markVisualIndex(videoId: string): Promise<void> {
+  const existing = await db.videos.get(videoId);
+  const now = Date.now();
+  await db.videos.put({
+    id: videoId,
+    url:
+      existing?.url ??
+      (videoId.startsWith('page:') ? videoId.slice('page:'.length) : undefined),
+    title: existing?.title,
+    platformId: existing?.platformId,
+    authorName: existing?.authorName,
+    duration: existing?.duration,
+    hasTranscript: existing?.hasTranscript ?? false,
+    hasVisualIndex: true,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  });
+}
+
 export async function createConversation(
   videoId: string | null,
   title?: string,

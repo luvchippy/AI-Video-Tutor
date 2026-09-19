@@ -37,6 +37,8 @@ export interface VideoRecord {
   url?: string;
   title?: string;
   platformId?: string;
+  /** Channel / uploader name, when the platform page exposed one. Local only. */
+  authorName?: string;
   duration?: number;
   hasTranscript: boolean;
   hasVisualIndex: boolean;

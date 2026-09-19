@@ -35,7 +35,7 @@
   <ul>
     <li><strong>Your API keys</strong> are stored only in the browser's <code>chrome.storage.local</code> (on your device). They are never written to the page DOM, the console, or any server.</li>
     <li><strong>Subtitles, knowledge chunks, keyframes, conversation history, and learning notes</strong> are stored only in the browser's local IndexedDB (<code>AI_VIDEO_TUTOR_DB</code>) on your device.</li>
-    <li><strong>The page URL, video title, platform and duration</strong> are stored locally with the video record so the extension can recognise a video it has already indexed. The URL is stored only — it is never transmitted anywhere.</li>
+    <li><strong>The page URL, video title, platform, duration and channel/uploader name</strong> are stored locally with the video record so the extension can recognise a video it has already indexed. The URL and the channel name are stored only — neither is ever transmitted anywhere.</li>
     <li>No full videos and no high-resolution screenshots are stored long-term.</li>
   </ul>
   <p>All of the above stays on your device and is removed when you uninstall the extension or clear browser data.</p>
@@ -50,10 +50,17 @@
     <li>Dots API — <code>note3-prev-api.askdiandian.com</code></li>
     <li>Any OpenAI-compatible endpoint or custom base URL you enter yourself</li>
   </ul>
-  <p>We do not proxy, store, or control these requests — it is a direct connection between your browser and the provider you own the key for. Whichever provider you configure is the only third party that ever receives your learning data.</p>
+  <p>We do not proxy, store, or control these requests — it is a direct connection between your browser and the provider you own the key for. Apart from the optional web-search service described next, whichever provider you configure is the only third party that ever receives your learning data.</p>
+  <p>You can also configure an optional <strong>dedicated web-search service</strong> — Tavily (<code>api.tavily.com</code>) or Brave Search (<code>api.search.brave.com</code>). When you enable one and ask a question that needs checking against the web, your question text is sent to that service as a search query, and the results it returns are passed to your AI provider within the same request. That service receives the search query only: it never receives your subtitles, your video's URL or any captured frame. Enabling it is entirely optional, and leaving it off keeps the extension to the single AI provider listed above.</p>
 
   <h2>4. Other network requests</h2>
-  <p>There are none. Apart from the AI provider you configure yourself, the extension contacts no server, and it sends no usage data, error reports or diagnostics anywhere. The catalogue of known models ships inside the extension rather than being downloaded.</p>
+  <p>There is one more request pattern, and it only ever talks to the site you already have open. When you press <em>Build knowledge index</em> on a YouTube or Bilibili page whose own markup exposes no subtitles, the extension asks that platform for the captions it already has:</p>
+  <ul>
+    <li>YouTube — the watch page and the <code>timedtext</code> caption file it points to, on <code>youtube.com</code>.</li>
+    <li>Bilibili — the public video and player APIs on <code>api.bilibili.com</code>, then the caption file they name, served from <code>hdslb.com</code>.</li>
+  </ul>
+  <p>These requests carry no cookies and identify you only as an anonymous visitor to a page you already have open. They happen only when you ask for an index, and they are skipped entirely when you supplied your own subtitle file or the page exposed its own subtitle track. On any other site, no such request is made.</p>
+  <p>Beyond those, there are no other network requests. The extension contacts no server of ours: there is no update ping, no licence check, no font or asset CDN and no analytics endpoint, and it sends no usage data, error reports or diagnostics anywhere. The catalogue of known models ships inside the extension rather than being downloaded.</p>
 
   <h2>5. Permissions — why they are needed</h2>
   <ul>
@@ -85,7 +92,7 @@
   <ul>
     <li><strong>你的 API Key</strong> 只保存在浏览器的 <code>chrome.storage.local</code>（本机）。它不会被写入页面 DOM、控制台或任何服务器。</li>
     <li><strong>字幕、知识片段、关键帧、对话记录、学习笔记</strong> 只保存在浏览器本地的 IndexedDB（<code>AI_VIDEO_TUTOR_DB</code>）。</li>
-    <li><strong>页面 URL、视频标题、平台与时长</strong> 会随视频记录存在本机，用于识别你已经建立过索引的视频。URL 仅存储，不会发送到任何地方。</li>
+    <li><strong>页面 URL、视频标题、平台、时长与频道／UP 主名</strong> 会随视频记录存在本机，用于识别你已经建立过索引的视频。URL 与频道名仅存储，不会发送到任何地方。</li>
     <li>不长期保存完整视频、不长期保存高清截图。</li>
   </ul>
   <p>以上数据都留在你的设备上，卸载扩展或清除浏览器数据即被删除。</p>
@@ -100,10 +107,17 @@
     <li>Dots API —— <code>note3-prev-api.askdiandian.com</code></li>
     <li>你自己填写的任意 OpenAI-compatible 端点或自定义 Base URL</li>
   </ul>
-  <p>我们不会中转、存储或控制这些请求——这是你的浏览器与你自己持有 Key 的服务商之间的直连。你所配置的那一家，是唯一会收到你学习数据的第三方。</p>
+  <p>我们不会中转、存储或控制这些请求——这是你的浏览器与你自己持有 Key 的服务商之间的直连。除了下面说明的可选搜索服务，你所配置的那一家是唯一会收到你学习数据的第三方。</p>
+  <p>你还可以额外配置一个<strong>独立的联网搜索服务</strong>——Tavily（<code>api.tavily.com</code>）或 Brave Search（<code>api.search.brave.com</code>）。启用后，当你提出需要联网核实的问题时，你的问题文本会作为搜索词发送给该服务，它返回的结果会在同一次请求中一并交给你的 AI 服务商。该服务只收到搜索词，不会收到你的字幕、视频 URL 或截取的画面。这一项完全可选，不配置时扩展只联系上面列出的 AI 服务商。</p>
 
   <h2>4. 其他网络请求</h2>
-  <p>没有。除了你自己配置的 AI 服务商，本扩展不联系任何服务器，也不会把使用数据、错误报告或诊断信息发往任何地方。已知模型清单随扩展一起打包，不需要下载。</p>
+  <p>还有一类请求，它只联系你已经打开的那个网站。当你在 YouTube 或 Bilibili 页面上点击「建立视频知识索引」、而页面本身没有暴露字幕时，扩展会向该平台索取它自己已有的字幕：</p>
+  <ul>
+    <li>YouTube —— 请求 <code>youtube.com</code> 上的观看页，以及其中指向的 <code>timedtext</code> 字幕文件。</li>
+    <li>Bilibili —— 请求 <code>api.bilibili.com</code> 上的公开视频与播放器接口，再请求它们给出的字幕文件（由 <code>hdslb.com</code> 提供）。</li>
+  </ul>
+  <p>这些请求不携带 Cookie，只会以匿名访客身份访问一个你本来就打开着的页面。它们仅在你主动建立索引时发出；如果你自己提供了字幕文件，或页面本身带有字幕轨，则完全不会发出。在其他站点上不会产生这类请求。</p>
+  <p>除此以外没有其他网络请求。本扩展不联系开发者的任何服务器：没有更新检查、没有授权校验、没有字体或素材 CDN、没有统计端点，也不会把使用数据、错误报告或诊断信息发往任何地方。已知模型清单随扩展一起打包，不需要下载。</p>
 
   <h2>5. 权限 —— 为什么需要</h2>
   <ul>

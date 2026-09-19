@@ -8,7 +8,7 @@ import { DOTS_CAPABILITIES } from '../providers/ai/dots';
 import { OPENAI_DEFAULT_CAPABILITIES, TEXT_ONLY_CAPABILITIES } from '../providers/ai/openai-compatible';
 import { MOCK_CAPABILITIES } from '../providers/ai/mock';
 
-export type CapabilitySource = 'registry' | 'remote-registry' | 'local-override' | 'protocol-default' | 'manual' | 'mixed';
+export type CapabilitySource = 'registry' | 'remote-registry' | 'local-override' | 'protocol-default' | 'manual' | 'mixed' | 'detected';
 
 export interface ResolvedCapabilities {
   capabilities: ModelCapabilities;
@@ -198,14 +198,18 @@ export function eligibleRoles(caps: ModelCapabilities): {
 }
 
 /**
- * The set of capabilities that can be auto-detected via a low-cost test
- * request. Audio / Video / Web Search are NOT auto-tested because they may
- * incur significant cost.
+ * Capabilities a cheap probe request can actually determine — see
+ * providers/ai/capability-probe.ts. Everything else falls back to the registry
+ * or protocol defaults, because probing it would need a full billable request
+ * (web search) or could not be sent at all today (audio/video: nothing in the
+ * pipeline builds those content parts).
+ *
+ * functionCalling is absent on purpose: ChatRequest has no `tools` field, so
+ * there is no request shape that could probe it.
  */
 export const DETECTABLE_CAPS = {
   textInput: true,
   imageInput: true,
-  functionCalling: true,
 } as const;
 
 /**

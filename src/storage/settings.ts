@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
     search: null,
   },
   activePreset: null,
+  searchService: 'none',
 };
 
 export async function loadSettings(): Promise<Settings> {

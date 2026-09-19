@@ -1,11 +1,16 @@
 import { buildProvider } from '@/providers/ai';
 import { MockProvider } from '@/providers/ai/mock';
+import { probeCapabilities } from '@/providers/ai/capability-probe';
 import { classifyTestError } from '@/providers/ai/test-errors';
 import type { AiProvider, ProviderConfig, SearchProvider } from '@/types/provider';
 import {
   createDisabledSearchProvider,
   createNativeSearchProvider,
 } from '@/providers/search';
+import {
+  createExternalSearchProvider,
+  EXTERNAL_SEARCH_SERVICE_LABEL,
+} from '@/providers/search/web-search';
 import {
   loadSettings,
   saveSettings,
@@ -21,10 +26,12 @@ import * as repo from '@/storage/repositories';
 import { TutorEngine, dataUrlToImageInput } from '@/services/tutor-engine';
 import { classifyIntent } from '@/router/intent';
 import { chunkSubtitles } from '@/timeline/chunker';
+import { summarizeChunks } from '@/services/chunk-summarizer';
 import { analyzeFrame } from '@/timeline/sparse-analysis';
-import { cropDataUrl, NO_FRAME_MESSAGE } from '@/services/frame-capture';
+import { cropDataUrl, downscaleDataUrl, NO_FRAME_MESSAGE } from '@/services/frame-capture';
 import { resolveSubtitles } from '@/services/subtitle-resolver';
 import { platformLabel } from '@/adapters/platform/registry';
+import { fetchPlatformSubtitles } from '@/adapters/platform/platform-sources';
 import type { VideoInfo } from '@/services/context-assembly';
 import type {
   BackgroundRequest,
@@ -147,20 +154,38 @@ async function buildProviderSet(settings: Settings): Promise<ProviderSet> {
   const video = await resolveAssignment(modelConfig.video, savedModels);
   const audio = await resolveAssignment(modelConfig.audio, savedModels);
 
-  let searchBacker: AiProvider | null = null;
-  const searchAssignment = modelConfig.search;
-  if (searchAssignment) {
-    searchBacker = await resolveAssignment(searchAssignment, savedModels);
-  } else if (vision?.capabilities.nativeWebSearch) {
-    searchBacker = vision;
-  } else if (audio?.capabilities.nativeWebSearch) {
-    searchBacker = audio;
-  } else if (tutor.capabilities.nativeWebSearch) {
-    searchBacker = tutor;
+  // Search: a dedicated search service (Tavily / Brave) comes first. The user
+  // configured one precisely so that search does not depend on any model's
+  // grounding, so a model with nativeWebSearch must not shadow it. Selecting a
+  // service without saving its key yields an unavailable provider whose reason
+  // says exactly which key is missing — clearer than silently falling back.
+  let search: SearchProvider;
+  let searchModelName: string | null;
+
+  if (settings.searchService !== 'none') {
+    const apiKey = await getApiKey(settings.searchService, null);
+    search = createExternalSearchProvider({
+      service: settings.searchService,
+      apiKey: apiKey ?? '',
+    });
+    searchModelName = EXTERNAL_SEARCH_SERVICE_LABEL[settings.searchService];
+  } else {
+    let searchBacker: AiProvider | null = null;
+    const searchAssignment = modelConfig.search;
+    if (searchAssignment) {
+      searchBacker = await resolveAssignment(searchAssignment, savedModels);
+    } else if (vision?.capabilities.nativeWebSearch) {
+      searchBacker = vision;
+    } else if (audio?.capabilities.nativeWebSearch) {
+      searchBacker = audio;
+    } else if (tutor.capabilities.nativeWebSearch) {
+      searchBacker = tutor;
+    }
+    search = searchBacker
+      ? createNativeSearchProvider(searchBacker)
+      : createDisabledSearchProvider();
+    searchModelName = searchBacker?.displayName ?? null;
   }
-  const search: SearchProvider = searchBacker
-    ? createNativeSearchProvider(searchBacker)
-    : createDisabledSearchProvider();
 
   return {
     tutor,
@@ -168,7 +193,7 @@ async function buildProviderSet(settings: Settings): Promise<ProviderSet> {
     video,
     audio,
     search,
-    searchModelName: searchBacker?.displayName ?? null,
+    searchModelName,
   };
 }
 
@@ -281,53 +306,108 @@ function deriveSummary(transcript: string): string {
 async function buildIndex(
   videoId: string,
   externalSubtitles?: SubtitleSegment[],
-): Promise<{ ok: boolean; chunkCount: number; error?: string }> {
+): Promise<{
+  ok: boolean;
+  chunkCount: number;
+  /** Chunks the tutor model actually wrote AI fields for. */
+  aiEnriched?: number;
+  /** Set when enrichment was skipped or partly failed. */
+  aiNote?: string;
+  /** Which subtitle source the index was built from. */
+  sourceLabel?: string;
+  error?: string;
+}> {
   // For local videos (videoId starts with "local:"), there is no page <video>
-  // to read textTracks from. External subtitles are the primary source.
-  // For page videos, we still try HTML textTracks as a fallback.
+  // to read textTracks from, and no page to ask for platform captions.
   const isLocal = videoId.startsWith('local:');
 
-  let segments: SubtitleSegment[];
-
-  if (isLocal) {
-    // Local video: only external subtitles are available (no page <video>)
-    segments = externalSubtitles ?? [];
-  } else {
-    // Page video: resolve from external (if provided) or HTML textTracks
-    const subtitleResp = await sendToContent({ type: 'GET_SUBTITLES' });
-    const htmlSegments =
-      subtitleResp.type === 'SUBTITLES' ? subtitleResp.segments : [];
-    const resolved = resolveSubtitles({
-      htmlTrackVideo: null, // content script already extracted these
-      externalSegments: externalSubtitles ?? null,
-    });
-    // If external subtitles provided, use them; otherwise use html tracks
-    segments = externalSubtitles && externalSubtitles.length > 0
-      ? externalSubtitles
-      : htmlSegments;
-    void resolved; // resolved used for label clarity in UI path
+  // The page context also carries what the video record is missing: the
+  // platform id, the page's own title, and the channel/uploader name.
+  let pageContext: PageContext | null = null;
+  if (!isLocal) {
+    const pageResp = await sendToContent({ type: 'GET_PAGE_CONTEXT' });
+    pageContext = pageResp.type === 'PAGE_CONTEXT' ? pageResp.context : null;
   }
 
+  const htmlResp = isLocal ? null : await sendToContent({ type: 'GET_SUBTITLES' });
+  const htmlSegments =
+    htmlResp?.type === 'SUBTITLES' ? htmlResp.segments : [];
+
+  // Platform captions cost two to four network requests, so they are the LAST
+  // resort: only fetched when nothing the page itself exposes was usable.
+  let platformSegments: SubtitleSegment[] | null = null;
+  let platformNote: string | null = null;
+  if (
+    pageContext !== null &&
+    htmlSegments.length === 0 &&
+    (externalSubtitles?.length ?? 0) === 0
+  ) {
+    const fetched = await fetchPlatformSubtitles(pageContext.url);
+    platformSegments = fetched.segments;
+    platformNote = fetched.note;
+  }
+
+  const resolved = resolveSubtitles({
+    htmlTrackVideo: null, // the content script already read textTracks
+    externalSegments: externalSubtitles ?? null,
+    htmlSegments,
+    platformSegments,
+  });
+  const segments = resolved.segments;
+
   if (segments.length === 0) {
+    // `platformNote` says why the platform route failed (no captions / blocked
+    // / unparseable), which is the useful half of the message on YouTube and
+    // Bilibili. It is only attached when that route was actually attempted.
+    const hint = platformNote
+      ? `（${platformNote}）`
+      : '可使用「加载字幕」选择 .srt / .vtt 文件。';
     return {
       ok: false,
       chunkCount: 0,
-      error: '当前视频没有发现可读取字幕，无法建立时间轴索引。可使用「加载字幕」选择 .srt / .vtt 文件。',
+      error: `当前视频没有发现可读取字幕，无法建立时间轴索引。${hint}`,
     };
   }
 
-  const chunks = chunkSubtitles(segments, { videoId }).map((c) => ({
-    ...c,
-    summary: c.summary ?? deriveSummary(c.transcript),
-  }));
+  const baseChunks: KnowledgeChunk[] = chunkSubtitles(segments, { videoId }).map(
+    (c) => ({
+      ...c,
+      summary: c.summary ?? deriveSummary(c.transcript),
+    }),
+  );
+
+  // Enrich with the tutor model. Best-effort by design: a missing model or a
+  // failed batch must never stop the index from being written, so every chunk
+  // keeps its local deriveSummary fallback. Mock is skipped because it would
+  // write invented keywords into the user's real index.
+  const settings = await loadSettings();
+  const set = await buildProviderSet(settings);
+  let chunks = baseChunks;
+  let aiNote: string | undefined;
+
+  if (set.tutor.provider === 'mock') {
+    aiNote = '当前没有可用的助教模型，仅使用本地截断摘要。';
+  } else {
+    const result = await summarizeChunks(set.tutor, baseChunks);
+    chunks = result.chunks;
+    if (result.failedBatches > 0) {
+      aiNote = `有 ${result.failedBatches} 批摘要失败，这些片段保留本地摘要。`;
+    }
+  }
+
+  // `keywords` is written exactly when the model answered for that chunk, so
+  // its presence is the honest signal for "AI-covered".
+  const aiEnriched = chunks.filter((c) => c.keywords !== undefined).length;
+
   await repo.putChunks(chunks);
 
   const existing = await repo.getVideo(videoId);
   const record: VideoRecord = {
     id: videoId,
     url: videoId.startsWith('page:') ? videoId.slice(5) : existing?.url,
-    title: existing?.title,
-    platformId: existing?.platformId,
+    title: pageContext?.title ?? existing?.title,
+    platformId: pageContext?.platformId ?? existing?.platformId,
+    authorName: pageContext?.creator?.name ?? existing?.authorName,
     duration: existing?.duration,
     hasTranscript: true,
     hasVisualIndex: existing?.hasVisualIndex ?? false,
@@ -336,7 +416,13 @@ async function buildIndex(
   };
   await repo.upsertVideo(record);
 
-  return { ok: true, chunkCount: chunks.length };
+  return {
+    ok: true,
+    chunkCount: chunks.length,
+    aiEnriched,
+    aiNote,
+    sourceLabel: resolved.sourceLabel,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -596,41 +682,24 @@ async function handleMessage(msg: BackgroundRequest): Promise<BackgroundResponse
           return {
             type: 'CAPABILITIES_DETECTED',
             ok: false,
-            error: '未配置 API Key，无法检测能力。',
+            error: '未配置 API Key，无法探测能力。',
           };
         }
+        // Probe against what we currently believe. Only the capabilities the
+        // probe can actually establish are overridden — everything else keeps
+        // its resolved value (see DETECTABLE_CAPS in capability-resolver.ts).
         const resolved = resolveCapabilities(msg.protocol, msg.modelId);
+        const base = msg.current ?? resolved.capabilities;
         const provider = buildProvider({
           provider: msg.protocol,
           modelId: msg.modelId,
           baseUrl: msg.baseUrl,
           apiKey,
-          capabilities: resolved.capabilities,
+          capabilities: base,
         } satisfies ProviderConfig);
 
-        // Test text input — a minimal chat request
-        let textInput = false;
-        try {
-          await provider.chat({
-            model: msg.modelId,
-            messages: [{ role: 'user', content: 'Reply exactly with: OK' }],
-            maxTokens: 8,
-          });
-          textInput = true;
-        } catch {
-          textInput = false;
-        }
-
-        // Image input: only test if the protocol/registry says it might work.
-        // We do NOT auto-test audio/video/web-search (cost concerns).
-        const registryCaps = resolved.capabilities;
-        const detected = {
-          textInput,
-          imageInput: registryCaps.imageInput, // trust registry/protocol, don't auto-test
-          functionCalling: registryCaps.functionCalling,
-        };
-
-        return { type: 'CAPABILITIES_DETECTED', ok: true, capabilities: detected };
+        const { capabilities, probed } = await probeCapabilities(provider, base);
+        return { type: 'CAPABILITIES_DETECTED', ok: true, capabilities, probed };
       } catch (e) {
         return {
           type: 'CAPABILITIES_DETECTED',
@@ -642,6 +711,9 @@ async function handleMessage(msg: BackgroundRequest): Promise<BackgroundResponse
 
     case 'GET_TIMELINE':
       return { type: 'TIMELINE', chunks: await repo.listChunks(msg.videoId) };
+
+    case 'GET_KEYFRAMES':
+      return { type: 'KEYFRAMES', keyframes: await repo.listKeyframes(msg.videoId) };
 
     case 'BUILD_INDEX':
       return { type: 'INDEX_RESULT', ...(await buildIndex(msg.videoId, msg.externalSubtitles)) };
@@ -661,7 +733,15 @@ async function handleMessage(msg: BackgroundRequest): Promise<BackgroundResponse
       }
       const kf = await analyzeFrame(set.vision, image, msg.videoId, msg.timestamp);
       if (kf) {
+        // The thumbnail is what makes a keyframe browsable later, but it is
+        // best-effort: a canvas failure must not throw away the analysis.
+        try {
+          kf.thumbnailDataUrl = await downscaleDataUrl(msg.dataUrl);
+        } catch {
+          /* keep the keyframe without a preview */
+        }
         await repo.putKeyframe(kf);
+        await repo.markVisualIndex(msg.videoId);
         return { type: 'ANALYZE_FRAME_RESULT', ok: true };
       }
       return { type: 'ANALYZE_FRAME_RESULT', ok: false, error: '视觉分析失败' };

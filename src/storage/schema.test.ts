@@ -50,4 +50,44 @@ describe('SettingsSchema', () => {
     const result = SettingsSchema.safeParse(settings);
     expect(result.success).toBe(true);
   });
+
+  it('defaults searchService to none for settings stored before the field existed', () => {
+    // A required field here would fail safeParse and `loadSettings` would reset
+    // every saved model — see the `.default()` note in schema.ts.
+    const legacy = {
+      learnerLevel: 'beginner',
+      learnerBackground: '',
+      savedModels: [],
+      modelConfig: {
+        tutor: { modelId: '' },
+        vision: null,
+        video: null,
+        audio: null,
+        search: null,
+      },
+      activePreset: null,
+    };
+
+    const result = SettingsSchema.safeParse(legacy);
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.searchService).toBe('none');
+  });
+
+  it('rejects an unknown search service', () => {
+    const result = SettingsSchema.safeParse({
+      learnerLevel: 'beginner',
+      learnerBackground: '',
+      savedModels: [],
+      modelConfig: {
+        tutor: { modelId: '' },
+        vision: null,
+        video: null,
+        audio: null,
+        search: null,
+      },
+      activePreset: null,
+      searchService: 'google',
+    });
+    expect(result.success).toBe(false);
+  });
 });
